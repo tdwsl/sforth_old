@@ -12,10 +12,6 @@ void f_rand(Forth *fth) {
   forth_push(fth, (void*)(intmax_t)i);
 }
 
-void f_test(Forth *fth) {
-  printf("hello world! %d\n", fth->size);
-}
-
 int main() {
   Forth *fth = forth_newForth();
   forth_addFunction(fth, f_rand, "RAND");
