@@ -9,7 +9,6 @@ int main(int argc, char **args) {
   }
 
   Forth *fth = forth_newForth();
-  forth_addDefaultWords(fth);
 
   if(argc == 2) {
     forth_doFile(fth, (const char*)args[1]);

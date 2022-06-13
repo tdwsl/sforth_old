@@ -57,7 +57,10 @@ void forth_run(Forth *fth, int start) {
       forth_push(fth, forth_getValue(fth, pc+1));
       break;
     case FORTH_PRINTSTRING:
-      printf("%s", (char*)forth_getValue(fth, pc+1));
+      {
+        for(char *c = (char*)forth_getValue(fth, pc+1); *c; c++)
+          fth->emit(*c);
+      }
       break;
     case FORTH_PLUS:
       forth_push(fth,
@@ -128,11 +131,13 @@ void forth_run(Forth *fth, int start) {
       break;
     case FORTH_GREATER:
       v1 = forth_pop(fth);
-      forth_push(fth, (void*)(intmax_t)(forth_pop(fth) > v1));
+      forth_push(fth,
+          (void*)(intmax_t)((intmax_t)forth_pop(fth) > (intmax_t)v1));
       break;
     case FORTH_LESS:
       v1 = forth_pop(fth);
-      forth_push(fth, (void*)(intmax_t)(forth_pop(fth) < v1));
+      forth_push(fth,
+          (void*)(intmax_t)((intmax_t)forth_pop(fth) < (intmax_t)v1));
       break;
     case FORTH_EQUAL:
       forth_push(fth, (void*)(intmax_t)(forth_pop(fth) == forth_pop(fth)));
@@ -194,7 +199,7 @@ void forth_run(Forth *fth, int start) {
       return;
     case FORTH_PRINTPROGRAM:
       forth_printProgram(fth);
-      break;
+      return;
     case FORTH_AND:
       forth_push(fth,
           (void*)((intmax_t)forth_pop(fth)&(intmax_t)forth_pop(fth)));
@@ -224,6 +229,10 @@ void forth_run(Forth *fth, int start) {
       break;
     case FORTH_TRACEOFF:
       fth->trace = 0;
+      break;
+    case FORTH_EMIT:
+      v1 = (void*)(intmax_t)forth_pop(fth);
+      forth_push(fth, v1);
       break;
     }
 
@@ -266,6 +275,7 @@ void forth_printInstruction(Forth *fth, int pc) {
   case FORTH_SWAP: printf("swap"); break;
   case FORTH_TRACEON: printf("traceon"); break;
   case FORTH_TRACEOFF: printf("traceoff"); break;
+  case FORTH_EMIT: printf("emit"); break;
 
   case FORTH_PRINTSTRING:
     printf(".\"%s\"", (char*)forth_getValue(fth, pc+1)); break;

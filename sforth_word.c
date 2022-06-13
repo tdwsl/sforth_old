@@ -201,5 +201,7 @@ void forth_addFunction(Forth *fth, void (*fun)(Forth*), const char *name) {
   forth_addValue(fth, (void*)fun);
   forth_addInstruction(fth, FORTH_RET);
 
+  fth->old_size = fth->size;
+
   free(s);
 }

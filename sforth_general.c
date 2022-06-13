@@ -73,6 +73,10 @@ int forth_validIdentifier(char *s) {
   return 1;
 }
 
+void forth_defaultEmit(char c) {
+  printf("%c", c);
+}
+
 Forth *forth_newForth() {
   Forth *fth = (Forth*)malloc(sizeof(Forth));
 
@@ -94,6 +98,10 @@ Forth *forth_newForth() {
   fth->quit = 0;
 
   fth->trace = 0;
+
+  fth->emit = forth_defaultEmit;
+
+  forth_addDefaultWords(fth);
 
   return fth;
 }

@@ -16,7 +16,7 @@ void forth_compileToken(Forth *fth, char *s) {
 
   intmax_t d;
 
-  /*printf("%s\n", s);*/
+  /*printf("{%s}\n", s);*/
 
   switch(fth->mode) {
   case FORTHMODE_QUOTE:

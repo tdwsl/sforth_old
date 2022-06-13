@@ -74,6 +74,7 @@ enum {
   FORTH_INCLUDE,
   FORTH_TRACEON,
   FORTH_TRACEOFF,
+  FORTH_EMIT,
 };
 
 enum {
@@ -122,11 +123,14 @@ typedef struct forthInstance {
 
   int trace;
 
+  void (*emit)(char);
+
   int quit;
 } Forth;
 
 void forth_addFunction(Forth *fth, void (*fun)(Forth*), const char *name);
 
+/* vvv - this is called in 'forth_newForth' */
 void forth_addDefaultWords(Forth *fth);
 
 Forth *forth_newForth();
