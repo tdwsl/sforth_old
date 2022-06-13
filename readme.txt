@@ -20,7 +20,8 @@ When compiling, use -lsforth to link to the library once it is installed.
 For information on how to use the API, check out the 'examples' folder.
 
 To compile, all you really need is a C compiler. To use the Makefile, you'll
-need make and binutils (for installing the static library).
+need make and binutils (for installing the static library). Check the
+Makefile for more information on compiling.
 
 This software is licensed under the MIT license. For more information, look
 at 'license.txt'.
