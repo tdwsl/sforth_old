@@ -61,42 +61,15 @@ int forth_validIdentifier(char *s) {
   for(int i = 0; s[i]; i++)
     if(s[i] <= ' ')
       return 0;
-  if(strcmp(s, ":") == 0)
-    return 0;
-  if(strcmp(s, ";") == 0)
-    return 0;
-  if(strcmp(s, ".\"") == 0)
-    return 0;
-  if(strcmp(s, ".(") == 0)
-    return 0;
-  if(strcmp(s, ".'") == 0)
-    return 0;
-  if(strcmp(s, "IF") == 0)
-    return 0;
-  if(strcmp(s, "ELSE") == 0)
-    return 0;
-  if(strcmp(s, "THEN") == 0)
-    return 0;
-  if(strcmp(s, "DO") == 0)
-    return 0;
-  if(strcmp(s, "I") == 0)
-    return 0;
-  if(strcmp(s, "LOOP") == 0)
-    return 0;
-  if(strcmp(s, "BEGIN") == 0)
-    return 0;
-  if(strcmp(s, "UNTIL") == 0)
-    return 0;
-  if(strcmp(s, "CREATE") == 0)
-    return 0;
-  if(strcmp(s, "VARIABLE") == 0)
-    return 0;
-  if(strcmp(s, "CONSTANT") == 0)
-    return 0;
-  if(strcmp(s, "FORGET") == 0)
-    return 0;
-  if(strcmp(s, "PRINTPROGRAM") == 0)
-    return 0;
+  const char *reserved[] = {
+    ":",";",".\"",".(",".'",
+    "I","IF","DO","THEN","ELSE","DO","LOOP","UNTIL","BEGIN",
+    "CREATE","FORGET","VARIABLE","CONSTANT", "INCLUDE",
+    0,
+  };
+  for(int i = 0; reserved[i]; i++)
+    if(strcmp(s, reserved[i]) == 0)
+      return 0;
   return 1;
 }
 
@@ -120,6 +93,8 @@ Forth *forth_newForth() {
 
   fth->quit = 0;
 
+  fth->trace = 0;
+
   return fth;
 }
 
@@ -133,6 +108,7 @@ void forth_freeForth(Forth *fth) {
     case FORTH_VARIABLE:
     case FORTH_CONSTANT:
     case FORTH_FORGET:
+    case FORTH_INCLUDE:
       free(forth_getValue(fth, pc+1));
       break;
     }

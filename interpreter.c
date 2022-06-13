@@ -30,8 +30,9 @@ int main(int argc, char **args) {
     for(;;) {
       char c;
       scanf("%c", &c);
+      //printf("%c (%d)\n", c, c);
 
-      if(c == '\n' || c == 0)
+      if(c == '\n' || c == 0 || c == 0x0a)
         break;
 
       s[len++] = c;
@@ -41,8 +42,11 @@ int main(int argc, char **args) {
         s = (char*)realloc(s, max);
       }
     }
-    s[len] = 0;
 
+    if(!len)
+      continue;
+
+    s[len] = 0;
     forth_doString(fth, s);
 
     if(forth_done(fth) && !fth->quit) {

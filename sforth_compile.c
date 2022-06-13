@@ -25,6 +25,12 @@ void forth_compileToken(Forth *fth, char *s) {
     forth_addString(fth, s);
     return;
 
+  case FORTHMODE_INCLUDE:
+    fth->mode = fth->old_mode;
+    forth_addInstruction(fth, FORTH_INCLUDE);
+    forth_addString(fth, s);
+    break;
+
   case FORTHMODE_VARIABLE:
     forth_capitalize(s);
     fth->mode = fth->old_mode;
@@ -212,8 +218,10 @@ void forth_compileToken(Forth *fth, char *s) {
       fth->old_mode = fth->mode;
       fth->mode = FORTHMODE_CONSTANT;
     }
-    else if(strcmp(s, "PRINTPROGRAM") == 0)
-      forth_addInstruction(fth, FORTH_PRINTPROGRAM);
+    else if(strcmp(s, "INCLUDE") == 0) {
+      fth->old_mode = fth->mode;
+      fth->mode = FORTHMODE_INCLUDE;
+    }
     else if((d = forth_findWord(fth, s)) != -1) {
       forth_addInstruction(fth, FORTH_CALL);
       forth_addValue(fth, (void*)(intmax_t)fth->words[d].addr);

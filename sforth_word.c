@@ -56,6 +56,7 @@ void forth_nextInstruction(Forth *fth, int *pc) {
   case FORTH_CONSTANT:
   case FORTH_FORGET:
   case FORTH_FUNCTION:
+  case FORTH_INCLUDE:
     *pc += 3;
     break;
   default:
@@ -85,6 +86,7 @@ void forth_forgetWord(Forth *fth, char *name) {
     case FORTH_VARIABLE:
     case FORTH_CREATE:
     case FORTH_CONSTANT:
+    case FORTH_INCLUDE:
       free(forth_getValue(fth, pc+1));
       break;
     }

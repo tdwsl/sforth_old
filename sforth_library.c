@@ -156,5 +156,17 @@ void forth_addDefaultWords(Forth *fth) {
   forth_addValue(fth, (void*)forth_defaultKey);
   forth_addInstruction(fth, FORTH_RET);
 
+  forth_addWord(fth, "PRINTPROGRAM");
+  forth_addInstruction(fth, FORTH_PRINTPROGRAM);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "TRACEON");
+  forth_addInstruction(fth, FORTH_TRACEON);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "TRACEOFF");
+  forth_addInstruction(fth, FORTH_TRACEOFF);
+  forth_addInstruction(fth, FORTH_RET);
+
   fth->old_size = fth->size;
 }

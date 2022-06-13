@@ -71,6 +71,9 @@ enum {
   FORTH_INVERT,
   FORTH_NOT,
   FORTH_FUNCTION,
+  FORTH_INCLUDE,
+  FORTH_TRACEON,
+  FORTH_TRACEOFF,
 };
 
 enum {
@@ -116,6 +119,8 @@ typedef struct forthInstance {
   int num_values;
 
   char mode, old_mode;
+
+  int trace;
 
   int quit;
 } Forth;
