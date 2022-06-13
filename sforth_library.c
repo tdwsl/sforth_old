@@ -8,8 +8,10 @@ void forth_defaultEmit(Forth *fth) {
 }
 
 void forth_defaultKey(Forth *fth) {
-  char c;
+  char c, d;
   scanf("%c", &c);
+  if(c != 10)
+    scanf("%c", &d);
   forth_push(fth, (void*)(intmax_t)c);
 }
 
