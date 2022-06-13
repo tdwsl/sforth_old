@@ -174,3 +174,30 @@ void forth_create(Forth *fth, char *name, void *val) {
 
   fth->old_size += offset;
 }
+
+void forth_addFunction(Forth *fth, void (*fun)(Forth*), const char *name) {
+  if(!forth_done(fth)) {
+    printf(FORTH_FUNCTION_ERR);
+    return;
+  }
+
+  char *s = malloc(strlen(name)+1);
+  strcpy(s, name);
+  forth_capitalize(s);
+
+  if(!forth_validIdentifier(s)) {
+    printf(FORTH_IDENTIFIER_ERR, name);
+    free(s);
+    return;
+  }
+
+  if(forth_findWord(fth, s) != -1)
+    forth_forgetWord(fth, s);
+
+  forth_addWord(fth, s);
+  forth_addInstruction(fth, FORTH_FUNCTION);
+  forth_addValue(fth, (void*)fun);
+  forth_addInstruction(fth, FORTH_RET);
+
+  free(s);
+}

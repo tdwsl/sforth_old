@@ -52,6 +52,54 @@ int forth_isInteger(char *s, intmax_t *n) {
   return 1;
 }
 
+int forth_validIdentifier(char *s) {
+  if(strlen(s) < 1)
+    return 0;
+  intmax_t n;
+  if(forth_isInteger(s, &n))
+    return 0;
+  for(int i = 0; s[i]; i++)
+    if(s[i] <= ' ')
+      return 0;
+  if(strcmp(s, ":") == 0)
+    return 0;
+  if(strcmp(s, ";") == 0)
+    return 0;
+  if(strcmp(s, ".\"") == 0)
+    return 0;
+  if(strcmp(s, ".(") == 0)
+    return 0;
+  if(strcmp(s, ".'") == 0)
+    return 0;
+  if(strcmp(s, "IF") == 0)
+    return 0;
+  if(strcmp(s, "ELSE") == 0)
+    return 0;
+  if(strcmp(s, "THEN") == 0)
+    return 0;
+  if(strcmp(s, "DO") == 0)
+    return 0;
+  if(strcmp(s, "I") == 0)
+    return 0;
+  if(strcmp(s, "LOOP") == 0)
+    return 0;
+  if(strcmp(s, "BEGIN") == 0)
+    return 0;
+  if(strcmp(s, "UNTIL") == 0)
+    return 0;
+  if(strcmp(s, "CREATE") == 0)
+    return 0;
+  if(strcmp(s, "VARIABLE") == 0)
+    return 0;
+  if(strcmp(s, "CONSTANT") == 0)
+    return 0;
+  if(strcmp(s, "FORGET") == 0)
+    return 0;
+  if(strcmp(s, "PRINTPROGRAM") == 0)
+    return 0;
+  return 1;
+}
+
 Forth *forth_newForth() {
   Forth *fth = (Forth*)malloc(sizeof(Forth));
 

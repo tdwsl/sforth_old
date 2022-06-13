@@ -28,33 +28,54 @@ void forth_compileToken(Forth *fth, char *s) {
   case FORTHMODE_VARIABLE:
     forth_capitalize(s);
     fth->mode = fth->old_mode;
-    forth_addInstruction(fth, FORTH_VARIABLE);
-    forth_addString(fth, s);
+    if(!forth_validIdentifier(s))
+      printf(FORTH_IDENTIFIER_ERR, s);
+    else {
+      forth_addInstruction(fth, FORTH_VARIABLE);
+      forth_addString(fth, s);
+    }
     break;
 
   case FORTHMODE_CONSTANT:
     forth_capitalize(s);
     fth->mode = fth->old_mode;
-    forth_addInstruction(fth, FORTH_CONSTANT);
-    forth_addString(fth, s);
+    if(!forth_validIdentifier(s))
+      printf(FORTH_IDENTIFIER_ERR, s);
+    else {
+      forth_addInstruction(fth, FORTH_CONSTANT);
+      forth_addString(fth, s);
+    }
     break;
 
   case FORTHMODE_FORGET:
     forth_capitalize(s);
     fth->mode = fth->old_mode;
-    forth_addInstruction(fth, FORTH_FORGET);
-    forth_addString(fth, s);
+    if(!forth_validIdentifier(s))
+      printf(FORTH_IDENTIFIER_ERR, s);
+    else {
+      forth_addInstruction(fth, FORTH_FORGET);
+      forth_addString(fth, s);
+    }
     break;
 
   case FORTHMODE_CREATE:
     forth_capitalize(s);
     fth->mode = fth->old_mode;
-    forth_addInstruction(fth, FORTH_CREATE);
-    forth_addString(fth, s);
+    if(!forth_validIdentifier(s))
+      printf(FORTH_IDENTIFIER_ERR, s);
+    else {
+      forth_addInstruction(fth, FORTH_CREATE);
+      forth_addString(fth, s);
+    }
     break;
 
   case FORTHMODE_WORDNAME:
     forth_capitalize(s);
+    if(!forth_validIdentifier(s)) {
+      printf(FORTH_IDENTIFIER_ERR, s);
+      fth->mode = FORTHMODE_WORDERR;
+      return;
+    }
     forth_addWord(fth, s);
     fth->mode = FORTHMODE_WORD;
     return;

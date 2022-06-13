@@ -51,7 +51,7 @@ int main(int argc, char **args) {
     }
   }
 
-  printf("Bye!\n");
+  printf("bye!\n");
 
   free(s);
   forth_freeForth(fth);

@@ -25,6 +25,8 @@
 #define FORTH_LOOP_ERR "expect 'DO' before 'LOOP' !\n"
 #define FORTH_BEGIN_ERR "expect 'UNTIL' after 'BEGIN' !\n"
 #define FORTH_UNTIL_ERR "expect 'BEGIN' before 'UNTIL' !\n"
+#define FORTH_FUNCTION_ERR "cannot define function here !\n"
+#define FORTH_IDENTIFIER_ERR "invalid identifier '%s' !\n"
 
 enum {
   FORTH_PUSH,
@@ -118,8 +120,7 @@ typedef struct forthInstance {
   int quit;
 } Forth;
 
-void forth_defaultEmit(Forth *fth);
-void forth_defaultKey(Forth *fth);
+void forth_addFunction(Forth *fth, void (*fun)(Forth*), const char *name);
 
 void forth_addDefaultWords(Forth *fth);
 
@@ -131,6 +132,8 @@ void *forth_pop(Forth *fth);
 void forth_push(Forth *fth, void *val);
 
 int forth_isInteger(char *s, intmax_t *n);
+int forth_validIdentifier(char *s);
+void forth_capitalize(char *s);
 
 void forth_printStack(Forth *fth);
 void forth_run(Forth *fth, int start);
