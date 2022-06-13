@@ -231,8 +231,8 @@ void forth_run(Forth *fth, int start) {
       fth->trace = 0;
       break;
     case FORTH_EMIT:
-      v1 = (void*)(intmax_t)forth_pop(fth);
-      forth_push(fth, v1);
+      v1 = forth_pop(fth);
+      fth->emit((char)(intmax_t)v1);
       break;
     }
 
