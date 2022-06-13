@@ -113,5 +113,25 @@ void forth_addDefaultWords(Forth *fth) {
   forth_addInstruction(fth, FORTH_BYE);
   forth_addInstruction(fth, FORTH_RET);
 
+  forth_addWord(fth, "AND");
+  forth_addInstruction(fth, FORTH_AND);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "OR");
+  forth_addInstruction(fth, FORTH_OR);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "XOR");
+  forth_addInstruction(fth, FORTH_XOR);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "NOT");
+  forth_addInstruction(fth, FORTH_NOT);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "INVERT");
+  forth_addInstruction(fth, FORTH_INVERT);
+  forth_addInstruction(fth, FORTH_RET);
+
   fth->old_size = fth->size;
 }

@@ -90,29 +90,35 @@ void forth_forgetWord(Forth *fth, char *name) {
     forth_nextInstruction(fth, &pc);
   }
 
-  int size = pc - fth->words[d].addr;
+  int size = pc - fth->words[d].addr + 1;
   fth->size -= size;
   fth->old_size -= size;
 
   for(int i = fth->words[d].addr; i < fth->size; i++)
     fth->program[i] = fth->program[i+size];
 
-  pc = fth->words[d].addr;
+  pc = 0;
   while(pc < fth->size) {
+    intmax_t a;
     switch(fth->program[pc]) {
     case FORTH_JUMP:
     case FORTH_JZ:
     case FORTH_CALL:
     case FORTH_LOOP:
-      forth_setValue(fth, pc+1, forth_getValue(fth, pc+1)-size);
+      a = (intmax_t)forth_getValue(fth, pc+1);
+      if(a > fth->words[d].addr)
+        forth_setValue(fth, pc+1, (void*)(a-size));
       break;
     }
 
     forth_nextInstruction(fth, &pc);
   }
 
+  for(int i = d+1; i < fth->num_words; i++)
+    fth->words[i].addr -= size;
+
   pc = 0;
-  while(pc < fth->num_words) {
+  while(pc < fth->size) {
     if(fth->program[pc] == FORTH_CALL) {
       int i = forth_getValueIndex(fth, pc+1);
       if(i == d)
@@ -125,7 +131,10 @@ void forth_forgetWord(Forth *fth, char *name) {
   }
 
   free(fth->words[d].name);
-  fth->words[d] = fth->words[--(fth->num_words)];
+  fth->num_words--;
+
+  for(int i = d; i < fth->num_words; i++)
+    fth->words[i] = fth->words[i+1];
 }
 
 void forth_create(Forth *fth, char *name, void *val) {

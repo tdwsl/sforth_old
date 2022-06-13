@@ -27,9 +27,9 @@ void forth_printStack(Forth *fth) {
 }
 
 int forth_done(Forth *fth) {
-  if(fth->compile.if_sp
-      || fth->compile.begin_sp
-      || fth->compile.do_sp)
+  if(fth->if_sp
+      || fth->begin_sp
+      || fth->do_sp)
     return 0;
 
   if(fth->mode != FORTHMODE_NORMAL)
@@ -38,7 +38,7 @@ int forth_done(Forth *fth) {
   return 1;
 }
 
-int forth_isInteger(char *s, int *n) {
+int forth_isInteger(char *s, intmax_t *n) {
   if(strlen(s) < 1)
     return 0;
 
@@ -88,9 +88,9 @@ Forth *forth_newForth() {
 
   fth->num_words = 0;
 
-  fth->compile.if_sp = 0;
-  fth->compile.do_sp = 0;
-  fth->compile.begin_sp = 0;
+  fth->if_sp = 0;
+  fth->do_sp = 0;
+  fth->begin_sp = 0;
 
   fth->mode = FORTHMODE_NORMAL;
 

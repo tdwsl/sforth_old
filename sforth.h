@@ -2,6 +2,7 @@
 #define SFORTH_H
 
 #include <stdarg.h>
+#include <stdint.h>
 
 #define FORTH_MEMORY_SIZE 64*1024
 #define FORTH_DICTIONARY_SIZE 2048
@@ -17,6 +18,14 @@
 #define FORTH_UNDEFINED_ERR "%s ?\n"
 #define FORTH_COLON_ERR "cannot define word inside word !\n"
 #define FORTH_FILENOTFOUND_ERR "failed to open %s !\n"
+#define FORTH_IF_ERR "expect 'THEN' after 'IF' !\n"
+#define FORTH_ELSE_ERR "expect 'IF' before 'ELSE' !\n"
+#define FORTH_THEN_ERR "expect 'IF' before 'THEN' !\n"
+#define FORTH_DO_ERR "expect 'LOOP' after 'DO' !\n"
+#define FORTH_I_ERR "expect 'DO' before 'I' !\n"
+#define FORTH_LOOP_ERR "expect 'DO' before 'LOOP' !\n"
+#define FORTH_BEGIN_ERR "expect 'UNTIL' after 'BEGIN' !\n"
+#define FORTH_UNTIL_ERR "expect 'BEGIN' before 'UNTIL' !\n"
 
 enum {
   FORTH_PUSH,
@@ -55,6 +64,13 @@ enum {
   FORTH_CONSTANT,
   FORTH_FORGET,
   FORTH_BYE,
+  FORTH_PRINTPROGRAM,
+  FORTH_I,
+  FORTH_AND,
+  FORTH_OR,
+  FORTH_XOR,
+  FORTH_INVERT,
+  FORTH_NOT,
 };
 
 enum {
@@ -80,16 +96,15 @@ typedef struct forthInstance {
   } words[FORTH_DICTIONARY_SIZE];
   int num_words;
 
-  struct {
-    int if_a[FORTH_COMPILE_STACK_SIZE*2];
-    int if_sp;
+  int if_a[FORTH_COMPILE_STACK_SIZE];
+  int else_a[FORTH_COMPILE_STACK_SIZE];
+  int if_sp;
 
-    int begin_a[FORTH_COMPILE_STACK_SIZE];
-    int begin_sp;
+  int begin_a[FORTH_COMPILE_STACK_SIZE];
+  int begin_sp;
 
-    int do_a[FORTH_COMPILE_STACK_SIZE];
-    int do_sp;
-  } compile;
+  int do_a[FORTH_COMPILE_STACK_SIZE];
+  int do_sp;
 
   char memory[FORTH_MEMORY_SIZE];
   void *here;
@@ -118,7 +133,7 @@ void *forth_pop(Forth *fth);
 void forth_push(Forth *fth, void *val);
 
 int forth_printf(Forth *fth, const char *format, ...);
-int forth_isInteger(char *s, int *n);
+int forth_isInteger(char *s, intmax_t *n);
 
 void forth_printStack(Forth *fth);
 void forth_run(Forth *fth, int start);

@@ -97,7 +97,7 @@ void forth_doFile(Forth *fth, const char *filename) {
   }
   fclose(fp);
 
-  s[len] = 0;
+  s[len-1] = 0;
   forth_doString(fth, s);
 
   free(s);

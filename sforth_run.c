@@ -135,16 +135,20 @@ void forth_run(Forth *fth, int start) {
       forth_pop(fth);
       break;
     case FORTH_DO:
-      i_stack[i_sp++] = (intmax_t)forth_pop(fth);
-      i_stack[i_sp++] = (intmax_t)forth_pop(fth);
+      i_sp += 2;
+      i_stack[i_sp-1] = (intmax_t)forth_pop(fth);
+      i_stack[i_sp-2] = (intmax_t)forth_pop(fth);
       break;
     case FORTH_LOOP:
-      if(--i_stack[i_sp-1] >= i_stack[i_sp-2])
+      if(++i_stack[i_sp-1] >= i_stack[i_sp-2])
         i_sp -= 2;
       else {
         pc = (intmax_t)forth_getValue(fth, pc+1);
         continue;
       }
+      break;
+    case FORTH_I:
+      forth_push(fth, (void*)(intmax_t)i_stack[i_sp-1]);
       break;
     case FORTH_HERE:
       forth_push(fth, fth->here);
@@ -176,6 +180,30 @@ void forth_run(Forth *fth, int start) {
     case FORTH_BYE:
       fth->quit = 1;
       return;
+    case FORTH_PRINTPROGRAM:
+      forth_printProgram(fth);
+      break;
+    case FORTH_AND:
+      forth_push(fth,
+          (void*)((intmax_t)forth_pop(fth)&(intmax_t)forth_pop(fth)));
+      break;
+    case FORTH_OR:
+      forth_push(fth,
+          (void*)((intmax_t)forth_pop(fth)|(intmax_t)forth_pop(fth)));
+      break;
+    case FORTH_XOR:
+      forth_push(fth,
+          (void*)((intmax_t)forth_pop(fth)^(intmax_t)forth_pop(fth)));
+      break;
+    case FORTH_NOT:
+      if(forth_has(fth, 1))
+        fth->stack[fth->sp-1] =
+            (void*)((intmax_t)!(intmax_t)fth->stack[fth->sp-1]);
+      break;
+    case FORTH_INVERT:
+      if(forth_has(fth, 1))
+        fth->stack[fth->sp-1] = (void*)(~(intmax_t)fth->stack[fth->sp-1]);
+      break;
     }
 
     forth_nextInstruction(fth, &pc);
@@ -207,6 +235,13 @@ void forth_printInstruction(Forth *fth, int pc) {
   case FORTH_HERE: forth_printf(fth, "here"); break;
   case FORTH_ALLOT: forth_printf(fth, "allot"); break;
   case FORTH_BYE: forth_printf(fth, "bye"); break;
+  case FORTH_PRINTPROGRAM: forth_printf(fth, "printprogram"); break;
+  case FORTH_I: forth_printf(fth, "i"); break;
+  case FORTH_AND: forth_printf(fth, "and"); break;
+  case FORTH_OR: forth_printf(fth, "or"); break;
+  case FORTH_XOR: forth_printf(fth, "xor"); break;
+  case FORTH_INVERT: forth_printf(fth, "invert"); break;
+  case FORTH_NOT: forth_printf(fth, "not"); break;
 
   case FORTH_PRINTSTRING:
     forth_printf(fth, ".\"%s\"", (char*)forth_getValue(fth, pc+1)); break;
