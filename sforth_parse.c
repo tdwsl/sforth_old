@@ -78,7 +78,7 @@ void forth_doString(Forth *fth, const char *text) {
 void forth_doFile(Forth *fth, const char *filename) {
   FILE *fp = fopen(filename, "r");
   if(!fp) {
-    forth_printf(fth, FORTH_FILENOTFOUND_ERR, filename);
+    printf(FORTH_FILENOTFOUND_ERR, filename);
     return;
   }
 

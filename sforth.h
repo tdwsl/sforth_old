@@ -12,7 +12,6 @@
 #define FORTH_I_STACK_SIZE 128
 #define FORTH_COMPILE_STACK_SIZE 256
 #define FORTH_MAX_VALUES 8196
-#define FORTH_PRINT_SIZE 512
 
 #define FORTH_UNDERFLOW_ERR "stack underflow !\n"
 #define FORTH_UNDEFINED_ERR "%s ?\n"
@@ -55,8 +54,6 @@ enum {
   FORTH_SETMEM,
   FORTH_GETMEM,
   FORTH_DO,
-  FORTH_KEY,
-  FORTH_EMIT,
   FORTH_HERE,
   FORTH_ALLOT,
   FORTH_CREATE,
@@ -71,6 +68,7 @@ enum {
   FORTH_XOR,
   FORTH_INVERT,
   FORTH_NOT,
+  FORTH_FUNCTION,
 };
 
 enum {
@@ -117,11 +115,11 @@ typedef struct forthInstance {
 
   char mode, old_mode;
 
-  void (*emit)(char);
-  char (*key)();
-
   int quit;
 } Forth;
+
+void forth_defaultEmit(Forth *fth);
+void forth_defaultKey(Forth *fth);
 
 void forth_addDefaultWords(Forth *fth);
 
@@ -132,7 +130,6 @@ int forth_has(Forth *fth, int n);
 void *forth_pop(Forth *fth);
 void forth_push(Forth *fth, void *val);
 
-int forth_printf(Forth *fth, const char *format, ...);
 int forth_isInteger(char *s, intmax_t *n);
 
 void forth_printStack(Forth *fth);

@@ -1,5 +1,7 @@
 #include "sforth.h"
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 void forth_movePC(int *addr_stack, int addr_sp, int *pc,
     int start, int offset)
@@ -26,11 +28,11 @@ void forth_run(Forth *fth, int start) {
 
   while(pc < fth->size && !fth->quit) {
     /* trace */
-    /*forth_printf(fth, "%d\t", pc);
+    /*printf("%d\t", pc);
     forth_printInstruction(fth, pc);
-    fth->emit('\n');
+    printf("\n");
     forth_printStack(fth);
-    fth->emit('\n');*/
+    printf("\n");*/
 
     switch(fth->program[pc]) {
     case FORTH_CALL:
@@ -53,7 +55,7 @@ void forth_run(Forth *fth, int start) {
       forth_push(fth, forth_getValue(fth, pc+1));
       break;
     case FORTH_PRINTSTRING:
-      forth_printf(fth, "%s", (char*)forth_getValue(fth, pc+1));
+      printf("%s", (char*)forth_getValue(fth, pc+1));
       break;
     case FORTH_PLUS:
       forth_push(fth,
@@ -76,22 +78,17 @@ void forth_run(Forth *fth, int start) {
       forth_push(fth, (void*)((intmax_t)forth_pop(fth)-(intmax_t)v1));
       break;
     case FORTH_CR:
-      fth->emit('\n');
+      printf("\n");
       break;
     case FORTH_PRINT:
-      forth_printf(fth, "%jd ", (intmax_t)forth_pop(fth));
+      printf("%jd ", (intmax_t)forth_pop(fth));
       break;
     case FORTH_SETMEM:
-      (*(void**)forth_pop(fth)) = forth_pop(fth);
+      v1 = forth_pop(fth);
+      memcpy((void**)forth_pop(fth), &v1, sizeof(void*));
       break;
     case FORTH_GETMEM:
       forth_push(fth, *(void**)forth_pop(fth));
-      break;
-    case FORTH_EMIT:
-      fth->emit((char)(intmax_t)forth_pop(fth));
-      break;
-    case FORTH_KEY:
-      forth_push(fth, (void*)(intmax_t)fth->key());
       break;
     case FORTH_DUP:
       v1 = forth_pop(fth);
@@ -204,6 +201,9 @@ void forth_run(Forth *fth, int start) {
       if(forth_has(fth, 1))
         fth->stack[fth->sp-1] = (void*)(~(intmax_t)fth->stack[fth->sp-1]);
       break;
+    case FORTH_FUNCTION:
+      ((void (*)(Forth*))forth_getValue(fth, pc+1))(fth);
+      break;
     }
 
     forth_nextInstruction(fth, &pc);
@@ -212,57 +212,59 @@ void forth_run(Forth *fth, int start) {
 
 void forth_printInstruction(Forth *fth, int pc) {
   switch(fth->program[pc]) {
-  case FORTH_PLUS: forth_printf(fth, "+"); break;
-  case FORTH_MINUS: forth_printf(fth, "-"); break;
-  case FORTH_MUL: forth_printf(fth, "*"); break;
-  case FORTH_DIV: forth_printf(fth, "/"); break;
-  case FORTH_MOD: forth_printf(fth, "mod"); break;
-  case FORTH_DUP: forth_printf(fth, "dup"); break;
-  case FORTH_ROT: forth_printf(fth, "rot"); break;
-  case FORTH_OVER: forth_printf(fth, "over"); break;
-  case FORTH_CR: forth_printf(fth, "cr"); break;
-  case FORTH_INC: forth_printf(fth, "1+"); break;
-  case FORTH_DEC: forth_printf(fth, "1-"); break;
-  case FORTH_GREATER: forth_printf(fth, ">"); break;
-  case FORTH_LESS: forth_printf(fth, "<"); break;
-  case FORTH_EQUAL: forth_printf(fth, "="); break;
-  case FORTH_DROP: forth_printf(fth, "drop"); break;
-  case FORTH_GETMEM: forth_printf(fth, "@"); break;
-  case FORTH_SETMEM: forth_printf(fth, "!"); break;
-  case FORTH_PRINT: forth_printf(fth, "."); break;
-  case FORTH_DO: forth_printf(fth, "do"); break;
-  case FORTH_RET: forth_printf(fth, "ret"); break;
-  case FORTH_HERE: forth_printf(fth, "here"); break;
-  case FORTH_ALLOT: forth_printf(fth, "allot"); break;
-  case FORTH_BYE: forth_printf(fth, "bye"); break;
-  case FORTH_PRINTPROGRAM: forth_printf(fth, "printprogram"); break;
-  case FORTH_I: forth_printf(fth, "i"); break;
-  case FORTH_AND: forth_printf(fth, "and"); break;
-  case FORTH_OR: forth_printf(fth, "or"); break;
-  case FORTH_XOR: forth_printf(fth, "xor"); break;
-  case FORTH_INVERT: forth_printf(fth, "invert"); break;
-  case FORTH_NOT: forth_printf(fth, "not"); break;
+  case FORTH_PLUS: printf("+"); break;
+  case FORTH_MINUS: printf("-"); break;
+  case FORTH_MUL: printf("*"); break;
+  case FORTH_DIV: printf("/"); break;
+  case FORTH_MOD: printf("mod"); break;
+  case FORTH_DUP: printf("dup"); break;
+  case FORTH_ROT: printf("rot"); break;
+  case FORTH_OVER: printf("over"); break;
+  case FORTH_CR: printf("cr"); break;
+  case FORTH_INC: printf("1+"); break;
+  case FORTH_DEC: printf("1-"); break;
+  case FORTH_GREATER: printf(">"); break;
+  case FORTH_LESS: printf("<"); break;
+  case FORTH_EQUAL: printf("="); break;
+  case FORTH_DROP: printf("drop"); break;
+  case FORTH_GETMEM: printf("@"); break;
+  case FORTH_SETMEM: printf("!"); break;
+  case FORTH_PRINT: printf("."); break;
+  case FORTH_DO: printf("do"); break;
+  case FORTH_RET: printf("ret"); break;
+  case FORTH_HERE: printf("here"); break;
+  case FORTH_ALLOT: printf("allot"); break;
+  case FORTH_BYE: printf("bye"); break;
+  case FORTH_PRINTPROGRAM: printf("printprogram"); break;
+  case FORTH_I: printf("i"); break;
+  case FORTH_AND: printf("and"); break;
+  case FORTH_OR: printf("or"); break;
+  case FORTH_XOR: printf("xor"); break;
+  case FORTH_INVERT: printf("invert"); break;
+  case FORTH_NOT: printf("not"); break;
 
   case FORTH_PRINTSTRING:
-    forth_printf(fth, ".\"%s\"", (char*)forth_getValue(fth, pc+1)); break;
+    printf(".\"%s\"", (char*)forth_getValue(fth, pc+1)); break;
   case FORTH_PUSH:
-    forth_printf(fth, "push %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
+    printf("push %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
   case FORTH_CALL:
-    forth_printf(fth, "call %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
+    printf("call %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
   case FORTH_JUMP:
-    forth_printf(fth, "jump %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
+    printf("jump %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
   case FORTH_JZ:
-    forth_printf(fth, "jz %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
+    printf("jz %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
   case FORTH_LOOP:
-    forth_printf(fth, "loop %d", (intmax_t)forth_getValue(fth, pc+1)); break;
+    printf("loop %jd", (intmax_t)forth_getValue(fth, pc+1)); break;
   case FORTH_CREATE:
-    forth_printf(fth, "create %s", (char*)forth_getValue(fth, pc+1)); break;
+    printf("create %s", (char*)forth_getValue(fth, pc+1)); break;
   case FORTH_CONSTANT:
-    forth_printf(fth, "variable %s", (char*)forth_getValue(fth, pc+1)); break;
+    printf("variable %s", (char*)forth_getValue(fth, pc+1)); break;
   case FORTH_VARIABLE:
-    forth_printf(fth, "variable %s", (char*)forth_getValue(fth, pc+1)); break;
+    printf("variable %s", (char*)forth_getValue(fth, pc+1)); break;
   case FORTH_FORGET:
-    forth_printf(fth, "forget %s", (char*)forth_getValue(fth, pc+1)); break;
+    printf("forget %s", (char*)forth_getValue(fth, pc+1)); break;
+  case FORTH_FUNCTION:
+    printf("function %jd", (uintmax_t)forth_getValue(fth, pc+1)); break;
   }
 }
 
@@ -273,13 +275,13 @@ void forth_printProgram(Forth *fth) {
   while(pc < fth->size) {
     if(wd < fth->num_words)
       if(pc == fth->words[wd].addr) {
-        forth_printf(fth, "%s:\n", fth->words[wd].name);
+        printf("%s:\n", fth->words[wd].name);
         wd++;
       }
 
-    forth_printf(fth, "%d\t", pc);
+    printf("%d\t", pc);
     forth_printInstruction(fth, pc);
-    forth_printf(fth, "\n");
+    printf("\n");
 
     forth_nextInstruction(fth, &pc);
   }

@@ -1,4 +1,17 @@
 #include "sforth.h"
+#include <stdio.h>
+#include <stdint.h>
+
+void forth_defaultEmit(Forth *fth) {
+  char c = (char)(intmax_t)forth_pop(fth);
+  printf("%c", c);
+}
+
+void forth_defaultKey(Forth *fth) {
+  char c;
+  scanf("%c", &c);
+  forth_push(fth, (void*)(intmax_t)c);
+}
 
 void forth_addDefaultWords(Forth *fth) {
   forth_addWord(fth, ">=");
@@ -131,6 +144,16 @@ void forth_addDefaultWords(Forth *fth) {
 
   forth_addWord(fth, "INVERT");
   forth_addInstruction(fth, FORTH_INVERT);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "EMIT");
+  forth_addInstruction(fth, FORTH_FUNCTION);
+  forth_addValue(fth, (void*)forth_defaultEmit);
+  forth_addInstruction(fth, FORTH_RET);
+
+  forth_addWord(fth, "KEY");
+  forth_addInstruction(fth, FORTH_FUNCTION);
+  forth_addValue(fth, (void*)forth_defaultKey);
   forth_addInstruction(fth, FORTH_RET);
 
   fth->old_size = fth->size;

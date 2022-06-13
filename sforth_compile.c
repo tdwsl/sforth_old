@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 
 void forth_capitalize(char *s) {
   for(char *c = s; *c; c++)
@@ -15,7 +16,7 @@ void forth_compileToken(Forth *fth, char *s) {
 
   intmax_t d;
 
-  /*forth_printf(fth, "%s\n", s);*/
+  /*printf("%s\n", s);*/
 
   switch(fth->mode) {
   case FORTHMODE_QUOTE:
@@ -70,11 +71,11 @@ void forth_compileToken(Forth *fth, char *s) {
     if(strcmp(s, ";") == 0) {
       if(fth->if_sp || fth->do_sp || fth->begin_sp) {
         if(fth->if_sp)
-          forth_printf(fth, FORTH_IF_ERR);
+          printf(FORTH_IF_ERR);
         if(fth->do_sp)
-          forth_printf(fth, FORTH_DO_ERR);
+          printf(FORTH_DO_ERR);
         if(fth->begin_sp)
-          forth_printf(fth, FORTH_BEGIN_ERR);
+          printf(FORTH_BEGIN_ERR);
         fth->if_sp = 0;
         fth->do_sp = 0;
         fth->begin_sp = 0;
@@ -93,7 +94,7 @@ void forth_compileToken(Forth *fth, char *s) {
       return;
     }
     if(strcmp(s, ":") == 0) {
-      forth_printf(fth, FORTH_COLON_ERR);
+      printf(FORTH_COLON_ERR);
       fth->mode = FORTHMODE_WORDERR;
       return;
     }
@@ -123,7 +124,7 @@ void forth_compileToken(Forth *fth, char *s) {
     }
     else if(strcmp(s, "ELSE") == 0) {
       if(!fth->if_sp)
-        forth_printf(fth, FORTH_ELSE_ERR);
+        printf(FORTH_ELSE_ERR);
       else {
         forth_addInstruction(fth, FORTH_JUMP);
         forth_addValue(fth, 0);
@@ -132,7 +133,7 @@ void forth_compileToken(Forth *fth, char *s) {
     }
     else if(strcmp(s, "THEN") == 0) {
       if(!fth->if_sp)
-        forth_printf(fth, FORTH_THEN_ERR);
+        printf(FORTH_THEN_ERR);
       else {
         fth->if_sp--;
         if(fth->else_a[fth->if_sp] == -1)
@@ -152,13 +153,13 @@ void forth_compileToken(Forth *fth, char *s) {
     }
     else if(strcmp(s, "I") == 0) {
       if(!fth->do_sp)
-        forth_printf(fth, FORTH_I_ERR);
+        printf(FORTH_I_ERR);
       else
         forth_addInstruction(fth, FORTH_I);
     }
     else if(strcmp(s, "LOOP") == 0) {
       if(!fth->do_sp)
-        forth_printf(fth, FORTH_LOOP_ERR);
+        printf(FORTH_LOOP_ERR);
       else {
         forth_addInstruction(fth, FORTH_LOOP);
         forth_addValue(fth, (void*)(intmax_t)fth->do_a[--(fth->do_sp)]);
@@ -168,7 +169,7 @@ void forth_compileToken(Forth *fth, char *s) {
       fth->begin_a[fth->begin_sp++] = fth->size;
     else if(strcmp(s, "UNTIL") == 0) {
       if(!fth->begin_sp)
-        forth_printf(fth, FORTH_UNTIL_ERR);
+        printf(FORTH_UNTIL_ERR);
       else {
         forth_addInstruction(fth, FORTH_JZ);
         forth_addValue(fth, (void*)(intmax_t)fth->begin_a[--(fth->begin_sp)]);
@@ -197,7 +198,7 @@ void forth_compileToken(Forth *fth, char *s) {
       forth_addValue(fth, (void*)(intmax_t)fth->words[d].addr);
     }
     else
-      forth_printf(fth, FORTH_UNDEFINED_ERR, s);
+      printf(FORTH_UNDEFINED_ERR, s);
     break;
   }
 

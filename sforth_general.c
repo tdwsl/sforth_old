@@ -5,25 +5,14 @@
 #include <stdio.h>
 #include <stdint.h>
 
-int forth_printf(Forth *fth, const char *format, ...) {
-  va_list valist;
-  va_start(valist, format);
-  char buf[FORTH_PRINT_SIZE];
-  int r =vsprintf(buf, format, valist);
-  for(char *c = buf; *c; c++)
-    fth->emit(*c);
-  va_end(valist);
-  return r;
-}
-
 void forth_printStack(Forth *fth) {
-  fth->emit('<');
+  printf("<");
   for(int i = 0; i < fth->sp; i++) {
     printf("%jd", (intmax_t)(fth->stack[i]));
     if(i < fth->sp-1)
-      fth->emit(' ');
+      printf(" ");
   }
-  fth->emit('>');
+  printf(">");
 }
 
 int forth_done(Forth *fth) {
@@ -63,21 +52,8 @@ int forth_isInteger(char *s, intmax_t *n) {
   return 1;
 }
 
-void forth_defaultEmit(char c) {
-  printf("%c", c);
-}
-
-char forth_defaultKey() {
-  char c = 0;
-  scanf("%c", &c);
-  return c;
-}
-
 Forth *forth_newForth() {
   Forth *fth = (Forth*)malloc(sizeof(Forth));
-
-  fth->emit = forth_defaultEmit;
-  fth->key = forth_defaultKey;
 
   fth->sp = 0;
 
@@ -126,7 +102,7 @@ int forth_has(Forth *fth, int n) {
   if(fth->sp >= n)
     return 1;
   else {
-    forth_printf(fth, FORTH_UNDERFLOW_ERR);
+    printf(FORTH_UNDERFLOW_ERR);
     return 0;
   }
 }

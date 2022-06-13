@@ -1,6 +1,7 @@
 #include "sforth.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 void forth_addWord(Forth *fth, char *name) {
   fth->words[fth->num_words].name = (char*)malloc(strlen(name)+1);
@@ -54,6 +55,7 @@ void forth_nextInstruction(Forth *fth, int *pc) {
   case FORTH_VARIABLE:
   case FORTH_CONSTANT:
   case FORTH_FORGET:
+  case FORTH_FUNCTION:
     *pc += 3;
     break;
   default:
@@ -71,7 +73,7 @@ int forth_findWord(Forth *fth, char *name) {
 void forth_forgetWord(Forth *fth, char *name) {
   int d = forth_findWord(fth, name);
   if(d == -1) {
-    forth_printf(fth, FORTH_UNDEFINED_ERR, name);
+    printf(FORTH_UNDEFINED_ERR, name);
     return;
   }
 
