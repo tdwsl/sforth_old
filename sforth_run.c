@@ -189,10 +189,25 @@ void forth_run(Forth *fth, int start) {
       forth_movePC(addr_stack, addr_sp, &pc, size, fth->old_size-size);
       break;
     case FORTH_INCLUDE:
-      size = fth->old_size;
-      fth->size = size;
-      forth_doFile(fth, (char*)forth_getValue(fth, pc+1));
-      forth_movePC(addr_stack, addr_sp, &pc, size, fth->old_size-size);
+      if(fth->size != fth->old_size) {
+        size = fth->size;
+        fth->size = fth->old_size;
+        forth_addWord(fth, "0");
+        fth->size = size;
+        forth_addInstruction(fth, FORTH_FORGET);
+        forth_addString(fth, "0");
+        forth_addInstruction(fth, FORTH_RET);
+        fth->old_size = fth->size;
+        size = fth->old_size;
+        forth_doFile(fth, (char*)forth_getValue(fth, pc+1));
+        forth_movePC(addr_stack, addr_sp, &pc, size, fth->old_size-size);
+        addr_stack[addr_sp++] = fth->size;
+      }
+      else {
+        size = fth->old_size;
+        forth_doFile(fth, (char*)forth_getValue(fth, pc+1));
+        forth_movePC(addr_stack, addr_sp, &pc, size, fth->old_size-size);
+      }
       break;
     case FORTH_BYE:
       fth->quit = 1;
