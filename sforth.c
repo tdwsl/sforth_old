@@ -14,6 +14,7 @@
 #define FORTH_DO_ERR "expect 'LOOP' after 'DO' !\n"
 #define FORTH_I_ERR "expect 'DO' before 'I' !\n"
 #define FORTH_LOOP_ERR "expect 'DO' before 'LOOP' !\n"
+#define FORTH_PLUSLOOP_ERR "expect 'DO' before '+LOOP' !\n"
 #define FORTH_BEGIN_ERR "expect 'UNTIL' after 'BEGIN' !\n"
 #define FORTH_UNTIL_ERR "expect 'BEGIN' before 'UNTIL' !\n"
 #define FORTH_FUNCTION_ERR "cannot define function here !\n"
@@ -32,6 +33,7 @@ enum {
   FORTH_JUMP,
   FORTH_JZ,
   FORTH_LOOP,
+  FORTH_PLUSLOOP,
   FORTH_DIV,
   FORTH_MOD,
   FORTH_MUL,
@@ -91,7 +93,7 @@ enum {
 /* reserved words */
 const char *forth_reserved[] = {
   ":",";",".\"",".(",".'",
-  "IF","DO","THEN","ELSE","LOOP","BEGIN","UNTIL","RECURSE",
+  "IF","DO","THEN","ELSE","LOOP","+LOOP","BEGIN","UNTIL","RECURSE",
   "CREATE","FORGET","INCLUDE","VARIABLE","CONSTANT","PRINTDEBUG",
   0,
 };
@@ -152,6 +154,7 @@ void forth_nextInstruction(ForthWord *wd, int *pc) {
   case FORTH_JZ:
   case FORTH_CALL:
   case FORTH_LOOP:
+  case FORTH_PLUSLOOP:
   case FORTH_PUSH:
     *pc += 3;
     break;
@@ -197,6 +200,7 @@ void forth_copyWord(Forth *fth, ForthWord *wd) {
     case FORTH_JZ:
     case FORTH_CALL:
     case FORTH_LOOP:
+    case FORTH_PLUSLOOP:
     case FORTH_PUSH:
       forth_addValue(fth, forth_getValue(wd, pc+1));
       break;
@@ -515,6 +519,8 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
     printf("jz %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
   case FORTH_LOOP:
     printf("loop %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
+  case FORTH_PLUSLOOP:
+    printf("+loop %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
   case FORTH_CREATE:
     printf("create %s", (char*)forth_getValue(wd, pc+1)); break;
   case FORTH_CONSTANT:
@@ -707,6 +713,20 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       break;
     case FORTH_LOOP:
       if(++i_stack[i_sp-1] >= i_stack[i_sp-2])
+        i_sp -= 2;
+      else {
+        pc = (intmax_t)forth_getValue(wd, pc+1);
+        continue;
+      }
+      break;
+    case FORTH_PLUSLOOP:
+      i = (intmax_t)forth_pop(fth);
+      i_stack[i_sp-1] += i;
+      if(i_stack[i_sp-1] >= i_stack[i_sp-2]
+          && i_stack[i_sp-1]-i < i_stack[i_sp-2])
+        i_sp -= 2;
+      else if(i_stack[i_sp-1] <= i_stack[i_sp-2]
+          && i_stack[i_sp-1]-i > i_stack[i_sp-2])
         i_sp -= 2;
       else {
         pc = (intmax_t)forth_getValue(wd, pc+1);
@@ -982,6 +1002,14 @@ void forth_compileToken(Forth *fth, char *s) {
         printf(FORTH_LOOP_ERR);
       else {
         forth_addInstruction(fth, FORTH_LOOP);
+        forth_addValue(fth, (void*)(intmax_t)fth->do_a[--(fth->do_sp)]);
+      }
+    }
+    else if(strcmp(s, "+LOOP") == 0) {
+      if(!fth->do_sp)
+        printf(FORTH_PLUSLOOP_ERR);
+      else {
+        forth_addInstruction(fth, FORTH_PLUSLOOP);
         forth_addValue(fth, (void*)(intmax_t)fth->do_a[--(fth->do_sp)]);
       }
     }
