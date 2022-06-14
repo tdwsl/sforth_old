@@ -1,7 +1,6 @@
 CC=cc
 CFLAGS=-O2 -Wall -I..
-OBJS=../*.o
-ARGS=$(CFLAGS) $(OBJS)
+ARGS=$(CFLAGS) ../sforth.o
 
 default:
 	$(CC) $(ARGS) guess.c -o guess

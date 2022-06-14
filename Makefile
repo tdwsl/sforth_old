@@ -1,13 +1,12 @@
 CC=cc
 CFLAGS=-O2 -Wall
-SRCS=sforth_run.c sforth_word.c sforth_parse.c sforth_general.c sforth_library.c sforth_compile.c
 
-sforth: $(SRCS) sforth.h interpreter.c
-	$(CC) $(CFLAGS) -c $(SRCS)
-	$(CC) $(CFLAGS) *.o interpreter.c -o sforth
+sforth: sforth.c sforth.h interpreter.c
+	$(CC) $(CFLAGS) -c sforth.c
+	$(CC) $(CFLAGS) sforth.o interpreter.c -o sforth
 
 install: sforth
-	ar ruv libsforth.a *.o
+	ar ruv libsforth.a sforth.o
 	ranlib libsforth.a
 	cp sforth /usr/bin
 	cp libsforth.a /usr/lib
@@ -19,4 +18,4 @@ uninstall:
 	rm /usr/include/sforth.h
 
 clean:
-	rm -f libsforth.a *.o sforth
+	rm -f libsforth.a sforth.o sforth
