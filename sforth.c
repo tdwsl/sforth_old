@@ -408,6 +408,16 @@ void forth_forgetWord(Forth *fth, char *name) {
   }
 }
 
+void forth_forgetName(Forth *fth, char *name) {
+  int d = forth_wordIndex(fth, name);
+  if(d == -1)
+    return;
+
+  free(fth->words[d].name);
+  fth->words[d].name = (char*)malloc(1);
+  fth->words[d].name[0] = 0;
+}
+
 int forth_isInteger(char *s, intmax_t *n) {
   if(strlen(s) < 1)
     return 0;
@@ -967,7 +977,8 @@ void forth_compileToken(Forth *fth, char *s) {
       fth->mode = FORTHMODE_NORMAL;
       d = forth_wordIndex(fth, fth->words[fth->num_words-1].name);
       if(d != -1 && d != fth->num_words-1)
-        forth_forgetWord(fth, fth->words[fth->num_words-1].name);
+        forth_forgetName(fth, fth->words[fth->num_words-1].name);
+        /*forth_forgetWord(fth, fth->words[fth->num_words-1].name);*/
       return;
     }
     if(strcmp(s, ":") == 0) {
