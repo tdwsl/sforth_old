@@ -21,7 +21,7 @@ int main() {
 ": GUESS "
 "  KEY 48 - "
 "  DUP -1 > OVER 10 < AND IF "
-"    DUP N = NOT IF "
+"    DUP N <> IF "
 "      DUP N > IF .( Too high) "
 "      ELSE .( Too low) THEN CR "
 "    THEN "

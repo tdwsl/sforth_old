@@ -16,6 +16,11 @@
 #define FORTH_PLUSLOOP_ERR "expect 'DO' before '+LOOP' !\n"
 #define FORTH_BEGIN_ERR "expect 'UNTIL' after 'BEGIN' !\n"
 #define FORTH_UNTIL_ERR "expect 'BEGIN' before 'UNTIL' !\n"
+#define FORTH_WHILE_ERR "expect 'BEGIN' before 'WHILE' !\n"
+#define FORTH_WHILEUNTIL_ERR "expect 'REPEAT' after 'WHILE' !\n"
+#define FORTH_REPEATBEGIN_ERR "expect 'BEGIN' before 'REPEAT' !\n"
+#define FORTH_REPEATWHILE_ERR "expect 'WHILE' before 'REPEAT' !\n"
+#define FORTH_REPEAT_ERR "expect 'REPEAT' after 'WHILE' !\n"
 #define FORTH_FUNCTION_ERR "cannot define function here !\n"
 #define FORTH_IDENTIFIER_ERR "invalid identifier '%s' !\n"
 #define FORTH_RESERVED_ERR "cannot redefine '%s' !\n"
@@ -62,7 +67,7 @@ enum {
   FORTH_OR,
   FORTH_XOR,
   FORTH_INVERT,
-  FORTH_NOT,
+  FORTH_EQUALZ,
   FORTH_FUNCTION,
   FORTH_TRACEON,
   FORTH_TRACEOFF,
@@ -72,6 +77,12 @@ enum {
   FORTH_GREATEREQ,
   FORTH_LESSEQ,
   FORTH_DIVMOD,
+  FORTH_CELLS,
+  FORTH_CELLSPLUS,
+  FORTH_NEQUALZ,
+  FORTH_GREATERZ,
+  FORTH_LESSZ,
+  FORTH_NEQUAL,
 };
 
 /* interpreter modes */
@@ -92,7 +103,8 @@ enum {
 /* reserved words */
 const char *forth_reserved[] = {
   ":",";","\\","(",".\"",".(",".'",
-  "IF","DO","THEN","ELSE","LOOP","+LOOP","BEGIN","UNTIL","RECURSE",
+  "IF","DO","THEN","ELSE","LOOP","+LOOP","BEGIN","UNTIL","WHILE",
+  "REPEAT","RECURSE",
   "CREATE","FORGET","INCLUDE","VARIABLE","CONSTANT","PRINTDEBUG",
   0,
 };
@@ -255,6 +267,8 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_MOD);
   forth_addWord(fth, "/MOD");
   forth_addInstruction(fth, FORTH_DIVMOD);
+  forth_addWord(fth, "DROP");
+  forth_addInstruction(fth, FORTH_DROP);
   forth_addWord(fth, "DUP");
   forth_addInstruction(fth, FORTH_DUP);
   forth_addWord(fth, "2DUP");
@@ -275,24 +289,36 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_LESS);
   forth_addWord(fth, "=");
   forth_addInstruction(fth, FORTH_EQUAL);
+  forth_addWord(fth, "<>");
+  forth_addInstruction(fth, FORTH_NEQUAL);
   forth_addWord(fth, ">=");
   forth_addInstruction(fth, FORTH_GREATEREQ);
   forth_addWord(fth, "<=");
   forth_addInstruction(fth, FORTH_LESSEQ);
+  forth_addWord(fth, "0=");
+  forth_addInstruction(fth, FORTH_EQUALZ);
+  forth_addWord(fth, "0>");
+  forth_addInstruction(fth, FORTH_GREATERZ);
+  forth_addWord(fth, "0<");
+  forth_addInstruction(fth, FORTH_LESSZ);
+  forth_addWord(fth, "0<>");
+  forth_addInstruction(fth, FORTH_NEQUALZ);
   forth_addWord(fth, "AND");
   forth_addInstruction(fth, FORTH_AND);
   forth_addWord(fth, "OR");
   forth_addInstruction(fth, FORTH_OR);
   forth_addWord(fth, "XOR");
   forth_addInstruction(fth, FORTH_XOR);
-  forth_addWord(fth, "NOT");
-  forth_addInstruction(fth, FORTH_NOT);
   forth_addWord(fth, "INVERT");
   forth_addInstruction(fth, FORTH_INVERT);
   forth_addWord(fth, "HERE");
   forth_addInstruction(fth, FORTH_HERE);
   forth_addWord(fth, "ALLOT");
   forth_addInstruction(fth, FORTH_ALLOT);
+  forth_addWord(fth, "CELLS");
+  forth_addInstruction(fth, FORTH_CELLS);
+  forth_addWord(fth, "CELLS+");
+  forth_addInstruction(fth, FORTH_CELLSPLUS);
   forth_addWord(fth, "!");
   forth_addInstruction(fth, FORTH_SETMEM);
   forth_addWord(fth, "@");
@@ -478,6 +504,7 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_GREATER: printf(">"); break;
   case FORTH_LESS: printf("<"); break;
   case FORTH_EQUAL: printf("="); break;
+  case FORTH_NEQUAL: printf("<>"); break;
   case FORTH_DROP: printf("drop"); break;
   case FORTH_GETMEM: printf("@"); break;
   case FORTH_SETMEM: printf("!"); break;
@@ -491,7 +518,7 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_OR: printf("or"); break;
   case FORTH_XOR: printf("xor"); break;
   case FORTH_INVERT: printf("invert"); break;
-  case FORTH_NOT: printf("not"); break;
+  case FORTH_EQUALZ: printf("0="); break;
   case FORTH_SWAP: printf("swap"); break;
   case FORTH_TRACEON: printf("traceon"); break;
   case FORTH_TRACEOFF: printf("traceoff"); break;
@@ -501,6 +528,11 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_DIVMOD: printf("/mod"); break;
   case FORTH_GREATEREQ: printf(">="); break;
   case FORTH_LESSEQ: printf("<="); break;
+  case FORTH_CELLS: printf("cells"); break;
+  case FORTH_CELLSPLUS: printf("cells+"); break;
+  case FORTH_GREATERZ: printf("0>"); break;
+  case FORTH_LESSZ: printf("0<"); break;
+  case FORTH_NEQUALZ: printf("0<>");
 
   case FORTH_PRINTSTRING:
     printf(".\"%s\"", (char*)forth_getValue(wd, pc+1)); break;
@@ -681,22 +713,41 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       break;
     case FORTH_GREATER:
       v1 = forth_pop(fth);
-      forth_push(fth, forth_pop(fth) > v1);
+      forth_push(fth, (forth_pop(fth) > v1)*-1);
       break;
     case FORTH_LESS:
       v1 = forth_pop(fth);
-      forth_push(fth, forth_pop(fth) < v1);
+      forth_push(fth, (forth_pop(fth) < v1)*-1);
       break;
     case FORTH_GREATEREQ:
       v1 = forth_pop(fth);
-      forth_push(fth, forth_pop(fth) >= v1);
+      forth_push(fth, (forth_pop(fth) >= v1)*-1);
       break;
     case FORTH_LESSEQ:
       v1 = forth_pop(fth);
-      forth_push(fth, forth_pop(fth) <= v1);
+      forth_push(fth, (forth_pop(fth) <= v1)*-1);
       break;
     case FORTH_EQUAL:
-      forth_push(fth, forth_pop(fth) == forth_pop(fth));
+      forth_push(fth, (forth_pop(fth) == forth_pop(fth))*-1);
+      break;
+    case FORTH_NEQUAL:
+      forth_push(fth, (forth_pop(fth) != forth_pop(fth))*-1);
+      break;
+    case FORTH_EQUALZ:
+      if(forth_has(fth, 1))
+        forth_push(fth, (forth_pop(fth) == 0)*-1);
+      break;
+    case FORTH_NEQUALZ:
+      if(forth_has(fth, 1))
+        forth_push(fth, (forth_pop(fth) != 0)*-1);
+      break;
+    case FORTH_GREATERZ:
+      if(forth_has(fth, 1))
+        forth_push(fth, (forth_pop(fth) > 0)*-1);
+      break;
+    case FORTH_LESSZ:
+      if(forth_has(fth, 1))
+        forth_push(fth, (forth_pop(fth) < 0)*-1);
       break;
     case FORTH_DROP:
       forth_pop(fth);
@@ -737,6 +788,12 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
     case FORTH_ALLOT:
       fth->here += forth_pop(fth);
       break;
+    case FORTH_CELLS:
+      forth_push(fth, forth_pop(fth)*sizeof(void*));
+      break;
+    case FORTH_CELLSPLUS:
+      forth_push(fth, forth_pop(fth)+sizeof(void*));
+      break;
     case FORTH_CREATE:
       forth_create(fth, (char*)forth_getValue(wd, pc+1), fth->here);
       break;
@@ -769,10 +826,6 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       break;
     case FORTH_XOR:
       forth_push(fth, forth_pop(fth)^forth_pop(fth));
-      break;
-    case FORTH_NOT:
-      if(forth_has(fth, 1))
-        forth_push(fth, !forth_pop(fth));
       break;
     case FORTH_INVERT:
       if(forth_has(fth, 1))
@@ -898,8 +951,12 @@ void forth_compileToken(Forth *fth, char *s) {
           printf(FORTH_IF_ERR);
         if(fth->do_sp)
           printf(FORTH_DO_ERR);
-        if(fth->begin_sp)
-          printf(FORTH_BEGIN_ERR);
+        if(fth->begin_sp) {
+          if(fth->while_a[fth->begin_sp-1] == -1)
+            printf(FORTH_BEGIN_ERR);
+          else
+            printf(FORTH_REPEAT_ERR);
+        }
         fth->if_sp = 0;
         fth->do_sp = 0;
         fth->begin_sp = 0;
@@ -1005,14 +1062,41 @@ void forth_compileToken(Forth *fth, char *s) {
         forth_addValue(fth, (void*)(intmax_t)fth->do_a[--(fth->do_sp)]);
       }
     }
-    else if(strcmp(s, "BEGIN") == 0)
-      fth->begin_a[fth->begin_sp++] = fth->words[fth->num_words-1].size;
+    else if(strcmp(s, "BEGIN") == 0) {
+      fth->begin_a[fth->begin_sp] = fth->words[fth->num_words-1].size;
+      fth->while_a[fth->begin_sp++] = -1;
+    }
+    else if(strcmp(s, "WHILE") == 0) {
+      if(!fth->begin_sp)
+        printf(FORTH_WHILE_ERR);
+      else {
+        forth_addInstruction(fth, FORTH_NEQUALZ);
+        forth_addInstruction(fth, FORTH_JZ);
+        forth_addValue(fth, 0);
+        fth->while_a[fth->begin_sp-1] = fth->words[fth->num_words-1].size;
+      }
+    }
     else if(strcmp(s, "UNTIL") == 0) {
       if(!fth->begin_sp)
         printf(FORTH_UNTIL_ERR);
+      else if(fth->while_a[fth->begin_sp-1] != -1)
+        printf(FORTH_WHILEUNTIL_ERR);
       else {
         forth_addInstruction(fth, FORTH_JZ);
         forth_addValue(fth, (void*)(intmax_t)fth->begin_a[--(fth->begin_sp)]);
+      }
+    }
+    else if(strcmp(s, "REPEAT") == 0) {
+      if(!fth->begin_sp)
+        printf(FORTH_REPEATBEGIN_ERR);
+      else if(fth->while_a[fth->begin_sp-1] == -1)
+        printf(FORTH_REPEATWHILE_ERR);
+      else {
+        ForthWord *wd = &fth->words[fth->num_words-1];
+        forth_addInstruction(fth, FORTH_JUMP);
+        forth_addValue(fth, (void*)(intmax_t)fth->begin_a[--(fth->begin_sp)]);
+        forth_setValue(wd, fth->while_a[fth->begin_sp]-2,
+            (void*)(intmax_t)wd->size);
       }
     }
     else if(strcmp(s, "FORGET") == 0) {

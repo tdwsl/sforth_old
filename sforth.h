@@ -25,6 +25,7 @@ typedef struct forth {
   int if_sp;
 
   int begin_a[FORTH_COMPILE_STACK_SIZE];
+  int while_a[FORTH_COMPILE_STACK_SIZE];
   int begin_sp;
 
   int do_a[FORTH_COMPILE_STACK_SIZE];
