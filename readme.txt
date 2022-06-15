@@ -3,7 +3,8 @@ sforth - a forth interpreter - tdwsl 2022
 sforth is a Forth interpreter that can be embedded within a C program using
 a simple API. It should work on most architectures. Some words may be
 missing, but it's easy to define custom words in C. An interpreter program
-is included.
+is included. That being said, its functionality is quite limited, and it
+doesn't support semantics or extending its self during runtime.
 
 Here is an example of using sforth to add a function and run a file:
 
