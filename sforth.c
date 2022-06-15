@@ -566,8 +566,8 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
   while(pc < wd->size && !(fth->quit)) {
     /* trace */
     if(fth->trace) {
-      forth_printInstruction(fth, wd, pc);
       forth_printStack(fth);
+      forth_printInstruction(fth, wd, pc);
     }
 
     switch(wd->program[pc]) {
@@ -619,8 +619,9 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       printf("%jd ", (intmax_t)forth_pop(fth));
       break;
     case FORTH_SETMEM:
+      v2 = forth_pop(fth);
       v1 = forth_pop(fth);
-      memcpy((void**)forth_pop(fth), &v1, sizeof(void*));
+      memcpy((void**)v2, &v1, sizeof(void*));
       break;
     case FORTH_GETMEM:
       forth_push(fth, *(void**)forth_pop(fth));
