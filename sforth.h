@@ -1,24 +1,11 @@
 #ifndef SFORTH_H
 #define SFORTH_H
 
+#include <stdint.h>
+
 #define FORTH_STACK_SIZE 512
 #define FORTH_COMPILE_STACK_SIZE 256
 #define FORTH_MEMORY_SIZE 480*1024
-
-#define FORTH_UNDERFLOW_ERR "stack underflow !\n"
-#define FORTH_UNDEFINED_ERR "%s ?\n"
-#define FORTH_COLON_ERR "cannot define word inside word !\n"
-#define FORTH_FILENOTFOUND_ERR "failed to open %s !\n"
-#define FORTH_IF_ERR "expect 'THEN' after 'IF' !\n"
-#define FORTH_ELSE_ERR "expect 'IF' before 'ELSE' !\n"
-#define FORTH_THEN_ERR "expect 'IF' before 'THEN' !\n"
-#define FORTH_DO_ERR "expect 'LOOP' after 'DO' !\n"
-#define FORTH_I_ERR "expect 'DO' before 'I' !\n"
-#define FORTH_LOOP_ERR "expect 'DO' before 'LOOP' !\n"
-#define FORTH_BEGIN_ERR "expect 'UNTIL' after 'BEGIN' !\n"
-#define FORTH_UNTIL_ERR "expect 'BEGIN' before 'UNTIL' !\n"
-#define FORTH_FUNCTION_ERR "cannot define function here !\n"
-#define FORTH_IDENTIFIER_ERR "invalid identifier '%s' !\n"
 
 typedef struct forthWord {
   char *name;
@@ -63,8 +50,8 @@ Forth *forth_newForth();
 void forth_freeForth(Forth *fth);
 
 int forth_has(Forth *fth, int n);
-void *forth_pop(Forth *fth);
-void forth_push(Forth *fth, void *val);
+intmax_t forth_pop(Forth *fth);
+void forth_push(Forth *fth, intmax_t val);
 
 int forth_done(Forth *fth);
 

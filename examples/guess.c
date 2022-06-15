@@ -1,15 +1,13 @@
 /* guess a random number from 0-9 */
 
 #include "sforth.h"
-#include <stdint.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 
 void f_rand(Forth *fth) {
   int i = rand();
-  forth_push(fth, (void*)(intmax_t)i);
+  forth_push(fth, i);
 }
 
 int main() {

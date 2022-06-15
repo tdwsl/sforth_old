@@ -1,5 +1,4 @@
 #include "sforth.h"
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -92,7 +91,7 @@ enum {
 
 /* reserved words */
 const char *forth_reserved[] = {
-  ":",";",".\"",".(",".'",
+  ":",";","\\","(",".\"",".(",".'",
   "IF","DO","THEN","ELSE","LOOP","+LOOP","BEGIN","UNTIL","RECURSE",
   "CREATE","FORGET","INCLUDE","VARIABLE","CONSTANT","PRINTDEBUG",
   0,
@@ -156,6 +155,7 @@ void forth_nextInstruction(ForthWord *wd, int *pc) {
   case FORTH_LOOP:
   case FORTH_PLUSLOOP:
   case FORTH_PUSH:
+  case FORTH_FUNCTION:
     *pc += 3;
     break;
   default:
@@ -335,15 +335,15 @@ int forth_has(Forth *fth, int n) {
   }
 }
 
-void *forth_pop(Forth *fth) {
+intmax_t forth_pop(Forth *fth) {
   if(forth_has(fth, 1))
-    return fth->stack[--(fth->sp)];
+    return (intmax_t)fth->stack[--(fth->sp)];
   else
     return 0;
 }
 
-void forth_push(Forth *fth, void *val) {
-  fth->stack[fth->sp++] = val;
+void forth_push(Forth *fth, intmax_t val) {
+  fth->stack[fth->sp++] = (void*)val;
 }
 
 int forth_wordIndex(Forth *fth, char *name) {
@@ -532,7 +532,7 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_PRINTDEBUG:
     printf("printdebug %s", (char*)forth_getValue(wd, pc+1)); break;
   case FORTH_FUNCTION:
-    printf("function %jd", (uintmax_t)forth_getValue(wd, pc+1)); break;
+    printf("function %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
   }
   printf("\n");
 }
@@ -559,7 +559,7 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
   int i_stack[FORTH_COMPILE_STACK_SIZE*2];
   int i_sp = 0;
 
-  void *v1, *v2;
+  intmax_t v1, v2;
   int i;
   char *c;
 
@@ -586,45 +586,43 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       }
       break;
     case FORTH_PUSH:
-      forth_push(fth, forth_getValue(wd, pc+1));
+      forth_push(fth, (intmax_t)forth_getValue(wd, pc+1));
       break;
     case FORTH_PRINTSTRING:
       for(c = (char*)forth_getValue(wd, pc+1); *c; c++)
         fth->emit(*c);
       break;
     case FORTH_PLUS:
-      forth_push(fth,
-          (void*)((intmax_t)forth_pop(fth)+(intmax_t)forth_pop(fth)));
+      forth_push(fth, forth_pop(fth)+forth_pop(fth));
       break;
     case FORTH_MUL:
-      forth_push(fth,
-          (void*)((intmax_t)forth_pop(fth)*(intmax_t)forth_pop(fth)));
+      forth_push(fth, forth_pop(fth)*forth_pop(fth));
       break;
     case FORTH_MOD:
       v1 = forth_pop(fth);
-      forth_push(fth, (void*)((intmax_t)forth_pop(fth)%(intmax_t)v1));
+      forth_push(fth, forth_pop(fth)%v1);
       break;
     case FORTH_DIV:
       v1 = forth_pop(fth);
-      forth_push(fth, (void*)((intmax_t)forth_pop(fth)/(intmax_t)v1));
+      forth_push(fth, forth_pop(fth)/v1);
       break;
     case FORTH_MINUS:
       v1 = forth_pop(fth);
-      forth_push(fth, (void*)((intmax_t)forth_pop(fth)-(intmax_t)v1));
+      forth_push(fth, forth_pop(fth)-v1);
       break;
     case FORTH_CR:
       printf("\n");
       break;
     case FORTH_PRINT:
-      printf("%jd ", (intmax_t)forth_pop(fth));
+      printf("%jd ", forth_pop(fth));
       break;
     case FORTH_SETMEM:
       v2 = forth_pop(fth);
       v1 = forth_pop(fth);
-      memcpy((void**)v2, &v1, sizeof(void*));
+      memcpy((void**)v2, (void*)&v1, sizeof(void*));
       break;
     case FORTH_GETMEM:
-      forth_push(fth, *(void**)forth_pop(fth));
+      forth_push(fth, *(intmax_t*)forth_pop(fth));
       break;
     case FORTH_DUP:
       v1 = forth_pop(fth);
@@ -633,8 +631,8 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       break;
     case FORTH_2DUP:
       if(forth_has(fth, 2)) {
-        forth_push(fth, fth->stack[fth->sp-2]);
-        forth_push(fth, fth->stack[fth->sp-2]);
+        forth_push(fth, (intmax_t)fth->stack[fth->sp-2]);
+        forth_push(fth, (intmax_t)fth->stack[fth->sp-2]);
       }
       else {
         forth_push(fth, 0);
@@ -645,8 +643,8 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       if(forth_has(fth, 2)) {
         v2 = forth_pop(fth);
         v1 = forth_pop(fth);
-        forth_push(fth, (void*)((intmax_t)v1%(intmax_t)v2));
-        forth_push(fth, (void*)((intmax_t)v1/(intmax_t)v2));
+        forth_push(fth, v1%v2);
+        forth_push(fth, v1/v2);
       }
       else {
         forth_push(fth, 0);
@@ -654,24 +652,24 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       }
     case FORTH_SWAP:
       if(forth_has(fth, 2)) {
-        v1 = fth->stack[fth->sp-1];
+        v1 = (intmax_t)fth->stack[fth->sp-1];
         fth->stack[fth->sp-1] = fth->stack[fth->sp-2];
-        fth->stack[fth->sp-2] = v1;
+        fth->stack[fth->sp-2] = (void*)v1;
       }
       break;
     case FORTH_OVER:
       if(forth_has(fth, 2))
-        forth_push(fth, fth->stack[fth->sp-2]);
+        forth_push(fth, (intmax_t)fth->stack[fth->sp-2]);
       else
         forth_push(fth, 0);
       break;
     case FORTH_ROT:
       if(!forth_has(fth, 3))
         break;
-      v1 = fth->stack[fth->sp-3];
+      v1 = (intmax_t)fth->stack[fth->sp-3];
       fth->stack[fth->sp-3] = fth->stack[fth->sp-2];
       fth->stack[fth->sp-2] = fth->stack[fth->sp-1];
-      fth->stack[fth->sp-1] = v1;
+      fth->stack[fth->sp-1] = (void*)v1;
       break;
     case FORTH_DEC:
       if(forth_has(fth, 1))
@@ -683,34 +681,30 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       break;
     case FORTH_GREATER:
       v1 = forth_pop(fth);
-      forth_push(fth,
-          (void*)(intmax_t)((intmax_t)forth_pop(fth) > (intmax_t)v1));
+      forth_push(fth, forth_pop(fth) > v1);
       break;
     case FORTH_LESS:
       v1 = forth_pop(fth);
-      forth_push(fth,
-          (void*)(intmax_t)((intmax_t)forth_pop(fth) < (intmax_t)v1));
+      forth_push(fth, forth_pop(fth) < v1);
       break;
     case FORTH_GREATEREQ:
       v1 = forth_pop(fth);
-      forth_push(fth,
-          (void*)(intmax_t)((intmax_t)forth_pop(fth) >= (intmax_t)v1));
+      forth_push(fth, forth_pop(fth) >= v1);
       break;
     case FORTH_LESSEQ:
       v1 = forth_pop(fth);
-      forth_push(fth,
-          (void*)(intmax_t)((intmax_t)forth_pop(fth) <= (intmax_t)v1));
+      forth_push(fth, forth_pop(fth) <= v1);
       break;
     case FORTH_EQUAL:
-      forth_push(fth, (void*)(intmax_t)(forth_pop(fth) == forth_pop(fth)));
+      forth_push(fth, forth_pop(fth) == forth_pop(fth));
       break;
     case FORTH_DROP:
       forth_pop(fth);
       break;
     case FORTH_DO:
       i_sp += 2;
-      i_stack[i_sp-1] = (intmax_t)forth_pop(fth);
-      i_stack[i_sp-2] = (intmax_t)forth_pop(fth);
+      i_stack[i_sp-1] = forth_pop(fth);
+      i_stack[i_sp-2] = forth_pop(fth);
       break;
     case FORTH_LOOP:
       if(++i_stack[i_sp-1] >= i_stack[i_sp-2])
@@ -721,7 +715,7 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       }
       break;
     case FORTH_PLUSLOOP:
-      i = (intmax_t)forth_pop(fth);
+      i = forth_pop(fth);
       i_stack[i_sp-1] += i;
       if(i_stack[i_sp-1] >= i_stack[i_sp-2]
           && i_stack[i_sp-1]-i < i_stack[i_sp-2])
@@ -735,13 +729,13 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       }
       break;
     case FORTH_I:
-      forth_push(fth, (void*)(intmax_t)i_stack[i_sp-1]);
+      forth_push(fth, i_stack[i_sp-1]);
       break;
     case FORTH_HERE:
-      forth_push(fth, fth->here);
+      forth_push(fth, (intmax_t)fth->here);
       break;
     case FORTH_ALLOT:
-      fth->here = (void*)((intmax_t)fth->here + (intmax_t)forth_pop(fth));
+      fth->here += forth_pop(fth);
       break;
     case FORTH_CREATE:
       forth_create(fth, (char*)forth_getValue(wd, pc+1), fth->here);
@@ -751,7 +745,8 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       fth->here += sizeof(void*);
       break;
     case FORTH_CONSTANT:
-      forth_create(fth, (char*)forth_getValue(wd, pc+1), forth_pop(fth));
+      forth_create(fth, (char*)forth_getValue(wd, pc+1),
+          (void*)forth_pop(fth));
       break;
     case FORTH_FORGET:
       forth_forgetWord(fth, (char*)forth_getValue(wd, pc+1));
@@ -767,25 +762,21 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       fth->quit = 1;
       return;
     case FORTH_AND:
-      forth_push(fth,
-          (void*)((intmax_t)forth_pop(fth)&(intmax_t)forth_pop(fth)));
+      forth_push(fth, forth_pop(fth)&forth_pop(fth));
       break;
     case FORTH_OR:
-      forth_push(fth,
-          (void*)((intmax_t)forth_pop(fth)|(intmax_t)forth_pop(fth)));
+      forth_push(fth, forth_pop(fth)|forth_pop(fth));
       break;
     case FORTH_XOR:
-      forth_push(fth,
-          (void*)((intmax_t)forth_pop(fth)^(intmax_t)forth_pop(fth)));
+      forth_push(fth, forth_pop(fth)^forth_pop(fth));
       break;
     case FORTH_NOT:
       if(forth_has(fth, 1))
-        fth->stack[fth->sp-1] =
-            (void*)((intmax_t)!(intmax_t)fth->stack[fth->sp-1]);
+        forth_push(fth, !forth_pop(fth));
       break;
     case FORTH_INVERT:
       if(forth_has(fth, 1))
-        fth->stack[fth->sp-1] = (void*)(~(intmax_t)fth->stack[fth->sp-1]);
+        forth_push(fth, ~forth_pop(fth));
       break;
     case FORTH_FUNCTION:
       ((void (*)(Forth*))forth_getValue(wd, pc+1))(fth);
@@ -797,10 +788,10 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       fth->trace = 0;
       break;
     case FORTH_EMIT:
-      fth->emit((char)(intmax_t)forth_pop(fth));
+      fth->emit(forth_pop(fth));
       break;
     case FORTH_KEY:
-      forth_push(fth, (void*)(intmax_t)fth->key());
+      forth_push(fth, fth->key());
       break;
     }
 
@@ -1077,7 +1068,7 @@ void forth_doString(Forth *fth, const char *text) {
   int len = 0;
 
   char quote = 0;
-  int comment = 0;
+  char comment = 0;
 
   for(const char *c = text; ; c++) {
     if(*c == '\n' || *c == 0) {
@@ -1095,8 +1086,11 @@ void forth_doString(Forth *fth, const char *text) {
         break;
     }
 
-    else if(comment)
+    else if(comment) {
+      if(comment == '(' && *c == ')')
+        comment = 0;
       continue;
+    }
 
     else if(quote) {
       if(*c == quote) {
@@ -1123,8 +1117,8 @@ void forth_doString(Forth *fth, const char *text) {
             quote = ')';
         }
 
-        if(strcmp(s, "\\") == 0)
-          comment = 1;
+        if(strcmp(s, "\\") == 0 || strcmp(s, "(") == 0)
+          comment = s[0];
         else
           forth_compileToken(fth, s);
       }
