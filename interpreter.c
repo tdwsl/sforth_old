@@ -49,8 +49,8 @@ int main(int argc, char **args) {
     forth_doString(fth, s);
 
     if(forth_done(fth) && !fth->quit) {
-      forth_printStack(fth);
       printf("    ok\n");
+      forth_printStack(fth);
     }
   }
 
