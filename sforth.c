@@ -61,7 +61,7 @@ enum {
   FORTH_CONSTANT,
   FORTH_FORGET,
   FORTH_BYE,
-  FORTH_PRINTDEBUG,
+  FORTH_SEE,
   FORTH_I,
   FORTH_AND,
   FORTH_OR,
@@ -74,6 +74,7 @@ enum {
   FORTH_EMIT,
   FORTH_KEY,
   FORTH_2DUP,
+  FORTH_2OVER,
   FORTH_GREATEREQ,
   FORTH_LESSEQ,
   FORTH_DIVMOD,
@@ -83,6 +84,8 @@ enum {
   FORTH_GREATERZ,
   FORTH_LESSZ,
   FORTH_NEQUAL,
+  FORTH_VALUE,
+  FORTH_TO,
 };
 
 /* interpreter modes */
@@ -97,15 +100,17 @@ enum {
   FORTHMODE_CONSTANT,
   FORTHMODE_INCLUDE,
   FORTHMODE_FORGET,
-  FORTHMODE_PRINTDEBUG,
+  FORTHMODE_SEE,
+  FORTHMODE_VALUE,
+  FORTHMODE_TO,
 };
 
 /* reserved words */
 const char *forth_reserved[] = {
   ":",";","\\","(",".\"",".(",".'",
-  "IF","DO","THEN","ELSE","LOOP","+LOOP","BEGIN","UNTIL","WHILE",
-  "REPEAT","RECURSE",
-  "CREATE","FORGET","INCLUDE","VARIABLE","CONSTANT","PRINTDEBUG",
+  "TO","IF","DO","SEE","THEN","ELSE","LOOP","+LOOP",
+  "BEGIN","UNTIL","WHILE","VALUE","CREATE","FORGET",
+  "INCLUDE","VARIABLE","CONSTANT","REPEAT","RECURSE",
   0,
 };
 
@@ -160,7 +165,7 @@ void forth_nextInstruction(ForthWord *wd, int *pc) {
   case FORTH_VARIABLE:
   case FORTH_CONSTANT:
   case FORTH_FORGET:
-  case FORTH_PRINTDEBUG:
+  case FORTH_SEE:
   case FORTH_JUMP:
   case FORTH_JZ:
   case FORTH_CALL:
@@ -168,6 +173,8 @@ void forth_nextInstruction(ForthWord *wd, int *pc) {
   case FORTH_PLUSLOOP:
   case FORTH_PUSH:
   case FORTH_FUNCTION:
+  case FORTH_TO:
+  case FORTH_VALUE:
     *pc += 3;
     break;
   default:
@@ -185,7 +192,9 @@ void forth_freeWord(ForthWord *wd) {
     case FORTH_VARIABLE:
     case FORTH_CONSTANT:
     case FORTH_FORGET:
-    case FORTH_PRINTDEBUG:
+    case FORTH_SEE:
+    case FORTH_VALUE:
+    case FORTH_TO:
       free(forth_getValue(wd, pc+1));
       break;
     }
@@ -205,7 +214,9 @@ void forth_copyWord(Forth *fth, ForthWord *wd) {
     case FORTH_VARIABLE:
     case FORTH_CONSTANT:
     case FORTH_FORGET:
-    case FORTH_PRINTDEBUG:
+    case FORTH_SEE:
+    case FORTH_TO:
+    case FORTH_VALUE:
       forth_addString(fth, (char*)forth_getValue(wd, pc+1));
       break;
     case FORTH_JUMP:
@@ -273,6 +284,8 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_DUP);
   forth_addWord(fth, "2DUP");
   forth_addInstruction(fth, FORTH_2DUP);
+  forth_addWord(fth, "2OVER");
+  forth_addInstruction(fth, FORTH_2OVER);
   forth_addWord(fth, "OVER");
   forth_addInstruction(fth, FORTH_OVER);
   forth_addWord(fth, "SWAP");
@@ -535,6 +548,7 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_EMIT: printf("emit"); break;
   case FORTH_KEY: printf("key"); break;
   case FORTH_2DUP: printf("2dup"); break;
+  case FORTH_2OVER: printf("2over"); break;
   case FORTH_DIVMOD: printf("/mod"); break;
   case FORTH_GREATEREQ: printf(">="); break;
   case FORTH_LESSEQ: printf("<="); break;
@@ -571,7 +585,11 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
     printf("variable %s", (char*)forth_getValue(wd, pc+1)); break;
   case FORTH_FORGET:
     printf("forget %s", (char*)forth_getValue(wd, pc+1)); break;
-  case FORTH_PRINTDEBUG:
+  case FORTH_VALUE:
+    printf("value %s", (char*)forth_getValue(wd, pc+1)); break;
+  case FORTH_TO:
+    printf("to %s", (char*)forth_getValue(wd, pc+1)); break;
+  case FORTH_SEE:
     printf("printdebug %s", (char*)forth_getValue(wd, pc+1)); break;
   case FORTH_FUNCTION:
     printf("function %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
@@ -675,6 +693,16 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       if(forth_has(fth, 2)) {
         forth_push(fth, (intmax_t)fth->stack[fth->sp-2]);
         forth_push(fth, (intmax_t)fth->stack[fth->sp-2]);
+      }
+      else {
+        forth_push(fth, 0);
+        forth_push(fth, 0);
+      }
+      break;
+    case FORTH_2OVER:
+      if(forth_has(fth, 4)) {
+        forth_push(fth, (intmax_t)fth->stack[fth->sp-4]);
+        forth_push(fth, (intmax_t)fth->stack[fth->sp-4]);
       }
       else {
         forth_push(fth, 0);
@@ -815,10 +843,27 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       forth_create(fth, (char*)forth_getValue(wd, pc+1),
           (void*)forth_pop(fth));
       break;
+    case FORTH_VALUE:
+      forth_create(fth, (char*)forth_getValue(wd, pc+1), fth->here);
+      forth_addInstruction(fth, FORTH_GETMEM);
+      v1 = forth_pop(fth);
+      memcpy((void**)fth->here, &v1, sizeof(void*));
+      fth->here += sizeof(void*);
+      break;
+    case FORTH_TO:
+      i = forth_wordIndex(fth, (char*)forth_getValue(wd, pc+1));
+      if(i != -1) {
+        v1 = (intmax_t)forth_getValue(&fth->words[i], 1);
+        v2 = forth_pop(fth);
+        memcpy((void**)v1, &v2, sizeof(void*));
+      }
+      else
+        printf(FORTH_IDENTIFIER_ERR, (char*)forth_getValue(wd, pc+1));
+      break;
     case FORTH_FORGET:
       forth_forgetWord(fth, (char*)forth_getValue(wd, pc+1));
       break;
-    case FORTH_PRINTDEBUG:
+    case FORTH_SEE:
       i = forth_wordIndex(fth, (char*)forth_getValue(wd, pc+1));
       if(i == -1)
         printf(FORTH_UNDEFINED_ERR, (char*)forth_getValue(wd, pc+1));
@@ -892,6 +937,24 @@ void forth_compileToken(Forth *fth, char *s) {
     forth_doFile(fth, (const char*)s);
     break;
 
+  case FORTHMODE_TO:
+    forth_capitalize(s);
+    fth->mode = fth->old_mode;
+    if(forth_validIdentifier(s)) {
+      forth_addInstruction(fth, FORTH_TO);
+      forth_addString(fth, s);
+    }
+    break;
+
+  case FORTHMODE_VALUE:
+    forth_capitalize(s);
+    fth->mode = fth->old_mode;
+    if(forth_validIdentifier(s)) {
+      forth_addInstruction(fth, FORTH_VALUE);
+      forth_addString(fth, s);
+    }
+    break;
+
   case FORTHMODE_VARIABLE:
     forth_capitalize(s);
     fth->mode = fth->old_mode;
@@ -928,11 +991,11 @@ void forth_compileToken(Forth *fth, char *s) {
     }
     break;
 
-  case FORTHMODE_PRINTDEBUG:
+  case FORTHMODE_SEE:
     forth_capitalize(s);
     fth->mode = fth->old_mode;
     if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_PRINTDEBUG);
+      forth_addInstruction(fth, FORTH_SEE);
       forth_addString(fth, s);
     }
     break;
@@ -1118,6 +1181,14 @@ void forth_compileToken(Forth *fth, char *s) {
       fth->old_mode = fth->mode;
       fth->mode = FORTHMODE_CREATE;
     }
+    else if(strcmp(s, "VALUE") == 0) {
+      fth->old_mode = fth->mode;
+      fth->mode = FORTHMODE_VALUE;
+    }
+    else if(strcmp(s, "TO") == 0) {
+      fth->old_mode = fth->mode;
+      fth->mode = FORTHMODE_TO;
+    }
     else if(strcmp(s, "VARIABLE") == 0) {
       fth->old_mode = fth->mode;
       fth->mode = FORTHMODE_VARIABLE;
@@ -1126,9 +1197,9 @@ void forth_compileToken(Forth *fth, char *s) {
       fth->old_mode = fth->mode;
       fth->mode = FORTHMODE_CONSTANT;
     }
-    else if(strcmp(s, "PRINTDEBUG") == 0) {
+    else if(strcmp(s, "SEE") == 0) {
       fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_PRINTDEBUG;
+      fth->mode = FORTHMODE_SEE;
     }
     else if(strcmp(s, "INCLUDE") == 0 && forth_done(fth))
       fth->mode = FORTHMODE_INCLUDE;
