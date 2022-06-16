@@ -79,13 +79,14 @@ enum {
   FORTH_LESSEQ,
   FORTH_DIVMOD,
   FORTH_CELLS,
-  FORTH_CELLSPLUS,
+  FORTH_CELLPLUS,
   FORTH_NEQUALZ,
   FORTH_GREATERZ,
   FORTH_LESSZ,
   FORTH_NEQUAL,
   FORTH_VALUE,
   FORTH_TO,
+  FORTH_DEPTH,
 };
 
 /* interpreter modes */
@@ -292,6 +293,8 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_SWAP);
   forth_addWord(fth, "ROT");
   forth_addInstruction(fth, FORTH_ROT);
+  forth_addWord(fth, "DEPTH");
+  forth_addInstruction(fth, FORTH_DEPTH);
   forth_addWord(fth, "1-");
   forth_addInstruction(fth, FORTH_DEC);
   forth_addWord(fth, "1+");
@@ -330,8 +333,8 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_ALLOT);
   forth_addWord(fth, "CELLS");
   forth_addInstruction(fth, FORTH_CELLS);
-  forth_addWord(fth, "CELLS+");
-  forth_addInstruction(fth, FORTH_CELLSPLUS);
+  forth_addWord(fth, "CELL+");
+  forth_addInstruction(fth, FORTH_CELLPLUS);
   forth_addWord(fth, "!");
   forth_addInstruction(fth, FORTH_SETMEM);
   forth_addWord(fth, "@");
@@ -553,10 +556,11 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_GREATEREQ: printf(">="); break;
   case FORTH_LESSEQ: printf("<="); break;
   case FORTH_CELLS: printf("cells"); break;
-  case FORTH_CELLSPLUS: printf("cells+"); break;
+  case FORTH_CELLPLUS: printf("cells+"); break;
   case FORTH_GREATERZ: printf("0>"); break;
   case FORTH_LESSZ: printf("0<"); break;
   case FORTH_NEQUALZ: printf("0<>");
+  case FORTH_DEPTH: printf("depth");
 
   case FORTH_PRINTSTRING:
     printf(".\"%s\"", (char*)forth_getValue(wd, pc+1)); break;
@@ -709,6 +713,9 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
         forth_push(fth, 0);
       }
       break;
+    case FORTH_DEPTH:
+      forth_push(fth, fth->sp);
+      break;
     case FORTH_DIVMOD:
       if(forth_has(fth, 2)) {
         v2 = forth_pop(fth);
@@ -829,7 +836,7 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
     case FORTH_CELLS:
       forth_push(fth, forth_pop(fth)*sizeof(void*));
       break;
-    case FORTH_CELLSPLUS:
+    case FORTH_CELLPLUS:
       forth_push(fth, forth_pop(fth)+sizeof(void*));
       break;
     case FORTH_CREATE:
