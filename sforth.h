@@ -41,6 +41,11 @@ typedef struct forth {
 
   int trace;
 
+  char *name;
+  ForthWord *wd;
+  int pc, i_sp;
+  int i_stack[FORTH_COMPILE_STACK_SIZE*2];
+
   void (*emit)(char);
   char (*key)(void);
 

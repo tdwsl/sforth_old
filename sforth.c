@@ -24,6 +24,7 @@
 #define FORTH_FUNCTION_ERR "cannot define function here !\n"
 #define FORTH_IDENTIFIER_ERR "invalid identifier '%s' !\n"
 #define FORTH_RESERVED_ERR "cannot redefine '%s' !\n"
+#define FORTH_PARSENAME_ERR "cannot call '%s' from within a word !\n"
 
 /* bytecode instructions */
 enum {
@@ -87,6 +88,7 @@ enum {
   FORTH_VALUE,
   FORTH_TO,
   FORTH_DEPTH,
+  FORTH_PARSENAME,
 };
 
 /* interpreter modes */
@@ -96,22 +98,16 @@ enum {
   FORTHMODE_WORDNAME,
   FORTHMODE_WORD,
   FORTHMODE_WORDERR,
-  FORTHMODE_CREATE,
-  FORTHMODE_VARIABLE,
-  FORTHMODE_CONSTANT,
+  FORTHMODE_PARSENAME,
   FORTHMODE_INCLUDE,
-  FORTHMODE_FORGET,
-  FORTHMODE_SEE,
-  FORTHMODE_VALUE,
-  FORTHMODE_TO,
 };
 
 /* reserved words */
 const char *forth_reserved[] = {
   ":",";","\\","(",".\"",".(",".'",
-  "TO","IF","DO","SEE","THEN","ELSE","LOOP","+LOOP",
-  "BEGIN","UNTIL","WHILE","VALUE","CREATE","FORGET",
-  "INCLUDE","VARIABLE","CONSTANT","REPEAT","RECURSE",
+  "IF","DO","THEN","ELSE","LOOP","+LOOP",
+  "BEGIN","UNTIL","WHILE",
+  "INCLUDE","REPEAT","RECURSE",
   0,
 };
 
@@ -162,11 +158,6 @@ void forth_setValue(ForthWord *wd, int addr, void *val) {
 void forth_nextInstruction(ForthWord *wd, int *pc) {
   switch(wd->program[*pc]) {
   case FORTH_PRINTSTRING:
-  case FORTH_CREATE:
-  case FORTH_VARIABLE:
-  case FORTH_CONSTANT:
-  case FORTH_FORGET:
-  case FORTH_SEE:
   case FORTH_JUMP:
   case FORTH_JZ:
   case FORTH_CALL:
@@ -174,8 +165,6 @@ void forth_nextInstruction(ForthWord *wd, int *pc) {
   case FORTH_PLUSLOOP:
   case FORTH_PUSH:
   case FORTH_FUNCTION:
-  case FORTH_TO:
-  case FORTH_VALUE:
     *pc += 3;
     break;
   default:
@@ -189,13 +178,6 @@ void forth_freeWord(ForthWord *wd) {
   while(pc < wd->size) {
     switch(wd->program[pc]) {
     case FORTH_PRINTSTRING:
-    case FORTH_CREATE:
-    case FORTH_VARIABLE:
-    case FORTH_CONSTANT:
-    case FORTH_FORGET:
-    case FORTH_SEE:
-    case FORTH_VALUE:
-    case FORTH_TO:
       free(forth_getValue(wd, pc+1));
       break;
     }
@@ -211,13 +193,6 @@ void forth_copyWord(Forth *fth, ForthWord *wd) {
   while(pc < 0) {
     switch(wd->program[pc]) {
     case FORTH_PRINTSTRING:
-    case FORTH_CREATE:
-    case FORTH_VARIABLE:
-    case FORTH_CONSTANT:
-    case FORTH_FORGET:
-    case FORTH_SEE:
-    case FORTH_TO:
-    case FORTH_VALUE:
       forth_addString(fth, (char*)forth_getValue(wd, pc+1));
       break;
     case FORTH_JUMP:
@@ -353,6 +328,25 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_TRACEON);
   forth_addWord(fth, "TRACEOFF");
   forth_addInstruction(fth, FORTH_TRACEOFF);
+  forth_addWord(fth, "PARSE-NAME");
+  forth_addInstruction(fth, FORTH_PARSENAME);
+  forth_addWord(fth, "CREATE");
+  forth_addInstruction(fth, FORTH_PARSENAME);
+  forth_addInstruction(fth, FORTH_CREATE);
+  forth_addWord(fth, "VARIABLE");
+  forth_addInstruction(fth, FORTH_PARSENAME);
+  forth_addInstruction(fth, FORTH_VARIABLE);
+  forth_addWord(fth, "CONSTANT");
+  forth_addInstruction(fth, FORTH_PARSENAME);
+  forth_addInstruction(fth, FORTH_CONSTANT);
+  forth_addWord(fth, "VALUE");
+  forth_addInstruction(fth, FORTH_PARSENAME);
+  forth_addInstruction(fth, FORTH_VALUE);
+  forth_addWord(fth, "FORGET");
+  forth_addInstruction(fth, FORTH_PARSENAME);
+  forth_addInstruction(fth, FORTH_FORGET);
+  forth_addWord(fth, "TO");
+  forth_addInstruction(fth, FORTH_TO);
 
   fth->fence = fth->num_words;
 
@@ -559,8 +553,15 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_CELLPLUS: printf("cells+"); break;
   case FORTH_GREATERZ: printf("0>"); break;
   case FORTH_LESSZ: printf("0<"); break;
-  case FORTH_NEQUALZ: printf("0<>");
-  case FORTH_DEPTH: printf("depth");
+  case FORTH_NEQUALZ: printf("0<>"); break;
+  case FORTH_DEPTH: printf("depth"); break;
+  case FORTH_PARSENAME: printf("parse-name"); break;
+  case FORTH_CREATE: printf("create"); break;
+  case FORTH_TO: printf("to"); break;
+  case FORTH_VALUE: printf("value"); break;
+  case FORTH_VARIABLE: printf("variable"); break;
+  case FORTH_FORGET: printf("forget"); break;
+  case FORTH_CONSTANT: printf("constant"); break;
 
   case FORTH_PRINTSTRING:
     printf(".\"%s\"", (char*)forth_getValue(wd, pc+1)); break;
@@ -581,20 +582,6 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
     printf("loop %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
   case FORTH_PLUSLOOP:
     printf("+loop %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
-  case FORTH_CREATE:
-    printf("create %s", (char*)forth_getValue(wd, pc+1)); break;
-  case FORTH_CONSTANT:
-    printf("constant %s", (char*)forth_getValue(wd, pc+1)); break;
-  case FORTH_VARIABLE:
-    printf("variable %s", (char*)forth_getValue(wd, pc+1)); break;
-  case FORTH_FORGET:
-    printf("forget %s", (char*)forth_getValue(wd, pc+1)); break;
-  case FORTH_VALUE:
-    printf("value %s", (char*)forth_getValue(wd, pc+1)); break;
-  case FORTH_TO:
-    printf("to %s", (char*)forth_getValue(wd, pc+1)); break;
-  case FORTH_SEE:
-    printf("printdebug %s", (char*)forth_getValue(wd, pc+1)); break;
   case FORTH_FUNCTION:
     printf("function %jd", (intmax_t)forth_getValue(wd, pc+1)); break;
   }
@@ -618,10 +605,10 @@ void forth_printWord(Forth *fth, ForthWord *wd) {
 }
 
 void forth_runWord(Forth *fth, ForthWord *wd) {
-  int pc = 0;
+  int pc = fth->pc;
 
-  int i_stack[FORTH_COMPILE_STACK_SIZE*2];
-  int i_sp = 0;
+  int *i_stack = fth->i_stack;
+  int i_sp = fth->i_sp;
 
   intmax_t v1, v2;
   int i;
@@ -839,43 +826,58 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
     case FORTH_CELLPLUS:
       forth_push(fth, forth_pop(fth)+sizeof(void*));
       break;
+    case FORTH_PARSENAME:
+      if(fth->mode == FORTHMODE_PARSENAME)
+        fth->mode = FORTHMODE_NORMAL;
+      else {
+        fth->mode = FORTHMODE_PARSENAME;
+        fth->pc = pc;
+        fth->i_sp = i_sp;
+        fth->wd = wd;
+        return;
+      }
+      break;
     case FORTH_CREATE:
-      forth_create(fth, (char*)forth_getValue(wd, pc+1), fth->here);
+      forth_create(fth, fth->name, fth->here);
+      free(fth->name);
       break;
     case FORTH_VARIABLE:
-      forth_create(fth, (char*)forth_getValue(wd, pc+1), fth->here);
+      forth_create(fth, fth->name, fth->here);
+      free(fth->name);
       fth->here += sizeof(void*);
       break;
     case FORTH_CONSTANT:
-      forth_create(fth, (char*)forth_getValue(wd, pc+1),
-          (void*)forth_pop(fth));
+      forth_create(fth, fth->name, (void*)forth_pop(fth));
+      free(fth->name);
       break;
     case FORTH_VALUE:
-      forth_create(fth, (char*)forth_getValue(wd, pc+1), fth->here);
+      forth_create(fth, fth->name, fth->here);
+      free(fth->name);
       forth_addInstruction(fth, FORTH_GETMEM);
       v1 = forth_pop(fth);
       memcpy((void**)fth->here, &v1, sizeof(void*));
       fth->here += sizeof(void*);
       break;
     case FORTH_TO:
-      i = forth_wordIndex(fth, (char*)forth_getValue(wd, pc+1));
-      if(i != -1) {
-        v1 = (intmax_t)forth_getValue(&fth->words[i], 1);
-        v2 = forth_pop(fth);
-        memcpy((void**)v1, &v2, sizeof(void*));
-      }
-      else
-        printf(FORTH_IDENTIFIER_ERR, (char*)forth_getValue(wd, pc+1));
+      pc++;
+      i = (intmax_t)forth_getValue(wd, pc+1);
+      printf("%d\n", i);
+      v1 = (intmax_t)forth_getValue(&fth->words[i], 1);
+      v2 = forth_pop(fth);
+      printf("*%jd = %jd\n", v1, v2);
+      memcpy((void**)(void*)v1, (void*)&v2, sizeof(void*));
       break;
     case FORTH_FORGET:
-      forth_forgetWord(fth, (char*)forth_getValue(wd, pc+1));
+      forth_forgetWord(fth, fth->name);
+      free(fth->name);
       break;
     case FORTH_SEE:
-      i = forth_wordIndex(fth, (char*)forth_getValue(wd, pc+1));
+      i = forth_wordIndex(fth, fth->name);
       if(i == -1)
-        printf(FORTH_UNDEFINED_ERR, (char*)forth_getValue(wd, pc+1));
+        printf(FORTH_UNDEFINED_ERR, fth->name);
       else
         forth_printWord(fth, &fth->words[i]);
+      free(fth->name);
       break;
     case FORTH_BYE:
       fth->quit = 1;
@@ -944,68 +946,19 @@ void forth_compileToken(Forth *fth, char *s) {
     forth_doFile(fth, (const char*)s);
     break;
 
-  case FORTHMODE_TO:
+  case FORTHMODE_PARSENAME:
     forth_capitalize(s);
-    fth->mode = fth->old_mode;
     if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_TO);
-      forth_addString(fth, s);
+      fth->name = malloc(strlen(s)+1);
+      strcpy(fth->name, s);
     }
-    break;
-
-  case FORTHMODE_VALUE:
-    forth_capitalize(s);
-    fth->mode = fth->old_mode;
-    if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_VALUE);
-      forth_addString(fth, s);
+    else {
+      printf(FORTH_IDENTIFIER_ERR, s);
+      fth->mode = FORTHMODE_NORMAL;
+      fth->pc += 3;
     }
-    break;
-
-  case FORTHMODE_VARIABLE:
-    forth_capitalize(s);
-    fth->mode = fth->old_mode;
-    if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_VARIABLE);
-      forth_addString(fth, s);
-    }
-    break;
-
-  case FORTHMODE_CONSTANT:
-    forth_capitalize(s);
-    fth->mode = fth->old_mode;
-    if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_CONSTANT);
-      forth_addString(fth, s);
-    }
-    break;
-
-  case FORTHMODE_FORGET:
-    forth_capitalize(s);
-    fth->mode = fth->old_mode;
-    if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_FORGET);
-      forth_addString(fth, s);
-    }
-    break;
-
-  case FORTHMODE_CREATE:
-    forth_capitalize(s);
-    fth->mode = fth->old_mode;
-    if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_CREATE);
-      forth_addString(fth, s);
-    }
-    break;
-
-  case FORTHMODE_SEE:
-    forth_capitalize(s);
-    fth->mode = fth->old_mode;
-    if(forth_validIdentifier(s)) {
-      forth_addInstruction(fth, FORTH_SEE);
-      forth_addString(fth, s);
-    }
-    break;
+    forth_runWord(fth, fth->wd);
+    return;
 
   case FORTHMODE_WORDNAME:
     forth_capitalize(s);
@@ -1180,37 +1133,20 @@ void forth_compileToken(Forth *fth, char *s) {
             (void*)(intmax_t)wd->size);
       }
     }
-    else if(strcmp(s, "FORGET") == 0) {
-      fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_FORGET;
-    }
-    else if(strcmp(s, "CREATE") == 0) {
-      fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_CREATE;
-    }
-    else if(strcmp(s, "VALUE") == 0) {
-      fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_VALUE;
-    }
-    else if(strcmp(s, "TO") == 0) {
-      fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_TO;
-    }
-    else if(strcmp(s, "VARIABLE") == 0) {
-      fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_VARIABLE;
-    }
-    else if(strcmp(s, "CONSTANT") == 0) {
-      fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_CONSTANT;
-    }
-    else if(strcmp(s, "SEE") == 0) {
-      fth->old_mode = fth->mode;
-      fth->mode = FORTHMODE_SEE;
-    }
     else if(strcmp(s, "INCLUDE") == 0 && forth_done(fth))
       fth->mode = FORTHMODE_INCLUDE;
+
     else if((d = forth_wordIndex(fth, s)) != -1) {
+      if(fth->mode == FORTHMODE_WORD) {
+        ForthWord *wd = &fth->words[d];
+        for(int pc = 0; pc < wd->size; forth_nextInstruction(wd, &pc))
+          if(wd->program[pc] == FORTH_PARSENAME) {
+            printf(FORTH_PARSENAME_ERR, wd->name);
+            fth->mode = FORTHMODE_WORDERR;
+            return;
+          }
+      }
+
       if(d < fth->fence) {
         for(int i = 0; i < fth->words[d].size; i++)
           forth_addInstruction(fth, fth->words[d].program[i]);
@@ -1228,8 +1164,11 @@ void forth_compileToken(Forth *fth, char *s) {
   if(forth_done(fth)) {
     int d = forth_wordIndex(fth, "0");
     if(d != -1) {
+      fth->pc = 0;
+      fth->i_sp = 0;
       forth_runWord(fth, &fth->words[d]);
-      forth_forgetWord(fth, "0");
+      if(fth->mode == FORTHMODE_NORMAL)
+        forth_forgetWord(fth, "0");
     }
   }
 }
