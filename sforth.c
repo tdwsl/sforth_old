@@ -345,6 +345,9 @@ Forth *forth_newForth() {
   forth_addWord(fth, "FORGET");
   forth_addInstruction(fth, FORTH_PARSENAME);
   forth_addInstruction(fth, FORTH_FORGET);
+  forth_addWord(fth, "SEE");
+  forth_addInstruction(fth, FORTH_PARSENAME);
+  forth_addInstruction(fth, FORTH_SEE);
   forth_addWord(fth, "TO");
   forth_addInstruction(fth, FORTH_TO);
 
@@ -383,7 +386,7 @@ void forth_push(Forth *fth, intmax_t val) {
 }
 
 int forth_wordIndex(Forth *fth, char *name) {
-  for(int i = 0; i < fth->num_words; i++)
+  for(int i = fth->num_words-1; i >= 0; i--)
     if(strcmp(fth->words[i].name, name) == 0)
       return i;
   return -1;
@@ -416,16 +419,6 @@ void forth_forgetWord(Forth *fth, char *name) {
       forth_nextInstruction(&fth->words[i], &pc);
     }
   }
-}
-
-void forth_forgetName(Forth *fth, char *name) {
-  int d = forth_wordIndex(fth, name);
-  if(d == -1)
-    return;
-
-  free(fth->words[d].name);
-  fth->words[d].name = (char*)malloc(1);
-  fth->words[d].name[0] = 0;
 }
 
 int forth_isInteger(char *s, intmax_t *n) {
@@ -485,10 +478,21 @@ void forth_create(Forth *fth, char *name, void *val) {
   if(!forth_validIdentifier(name))
     return;
 
-  forth_forgetWord(fth, name);
   forth_addWord(fth, name);
   forth_addInstruction(fth, FORTH_PUSH);
   forth_addValue(fth, val);
+}
+
+void forth_toFront(Forth *fth, char *name) {
+  int d = forth_wordIndex(fth, name);
+  if(d == -1)
+    return;
+  forth_addWord(fth, "");
+  forth_copyWord(fth, &fth->words[d]);
+  forth_forgetWord(fth, name);
+  free(fth->words[fth->num_words-1].name);
+  fth->words[fth->num_words-1].name = (char*)malloc(strlen(name)+1);
+  strcpy(fth->words[fth->num_words-1].name, name);
 }
 
 void forth_addFunction(Forth *fth, void (*fun)(Forth*), const char *name) {
@@ -498,7 +502,6 @@ void forth_addFunction(Forth *fth, void (*fun)(Forth*), const char *name) {
   char *s = (char*)malloc(strlen(name)+1);
   strcpy(s, name);
   forth_capitalize(s);
-  forth_forgetWord(fth, s);
   forth_addWord(fth, s);
   free(s);
 
@@ -611,7 +614,7 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
   int i_sp = fth->i_sp;
 
   intmax_t v1, v2;
-  int i;
+  intmax_t i;
   char *c;
 
   while(pc < wd->size && !(fth->quit)) {
@@ -827,16 +830,11 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       forth_push(fth, forth_pop(fth)+sizeof(void*));
       break;
     case FORTH_PARSENAME:
-      if(fth->mode == FORTHMODE_PARSENAME)
-        fth->mode = FORTHMODE_NORMAL;
-      else {
-        fth->mode = FORTHMODE_PARSENAME;
-        fth->pc = pc;
-        fth->i_sp = i_sp;
-        fth->wd = wd;
-        return;
-      }
-      break;
+      fth->mode = FORTHMODE_PARSENAME;
+      fth->pc = pc;
+      fth->i_sp = i_sp;
+      fth->wd = wd;
+      return;
     case FORTH_CREATE:
       forth_create(fth, fth->name, fth->here);
       free(fth->name);
@@ -859,13 +857,11 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       fth->here += sizeof(void*);
       break;
     case FORTH_TO:
-      pc++;
-      i = (intmax_t)forth_getValue(wd, pc+1);
-      printf("%d\n", i);
+      i = (intmax_t)forth_getValue(wd, pc+2);
       v1 = (intmax_t)forth_getValue(&fth->words[i], 1);
       v2 = forth_pop(fth);
-      printf("*%jd = %jd\n", v1, v2);
-      memcpy((void**)(void*)v1, (void*)&v2, sizeof(void*));
+      memcpy((void**)v1, (void**)&v2, sizeof(void*));
+      pc++;
       break;
     case FORTH_FORGET:
       forth_forgetWord(fth, fth->name);
@@ -925,6 +921,13 @@ int forth_done(Forth *fth) {
   if(fth->mode != FORTHMODE_NORMAL)
     return 0;
 
+  if(fth->words) {
+    ForthWord *wd = &fth->words[fth->num_words-1];
+    if(strcmp(wd->name, "0") == 0)
+      if(wd->program[0] == FORTH_TO && wd->size < 3)
+        return 0;
+  }
+
   return 1;
 }
 
@@ -951,12 +954,13 @@ void forth_compileToken(Forth *fth, char *s) {
     if(forth_validIdentifier(s)) {
       fth->name = malloc(strlen(s)+1);
       strcpy(fth->name, s);
+      fth->pc++;
     }
     else {
       printf(FORTH_IDENTIFIER_ERR, s);
-      fth->mode = FORTHMODE_NORMAL;
       fth->pc += 3;
     }
+    fth->mode = FORTHMODE_NORMAL;
     forth_runWord(fth, fth->wd);
     return;
 
@@ -998,10 +1002,6 @@ void forth_compileToken(Forth *fth, char *s) {
       }
 
       fth->mode = FORTHMODE_NORMAL;
-      d = forth_wordIndex(fth, fth->words[fth->num_words-1].name);
-      if(d != -1 && d != fth->num_words-1)
-        forth_forgetName(fth, fth->words[fth->num_words-1].name);
-        /*forth_forgetWord(fth, fth->words[fth->num_words-1].name);*/
       return;
     }
     if(strcmp(s, ":") == 0) {
@@ -1020,11 +1020,8 @@ void forth_compileToken(Forth *fth, char *s) {
       d = forth_wordIndex(fth, "0");
       if(d == -1)
         forth_addWord(fth, "0");
-      else if(d != fth->num_words-1) {
-        forth_addWord(fth, "0");
-        forth_copyWord(fth, &fth->words[d]);
-        forth_forgetWord(fth, "0");
-      }
+      else if(d != fth->num_words-1)
+        forth_toFront(fth, "0");
     }
 
     forth_capitalize(s);
