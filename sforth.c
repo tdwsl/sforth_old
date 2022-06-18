@@ -132,7 +132,7 @@ void forth_addValue(Forth *fth, void *val) {
   wd->program = (char*)realloc(wd->program, wd->size);
   wd->program[wd->size-2] = (char)((wd->num_values)>>8);
   wd->program[wd->size-1] = (char)((wd->num_values)&0xff);
-  wd->values = (void*)realloc(wd->values, sizeof(void*)*(++(wd->num_values)));
+  wd->values = (void**)realloc(wd->values, sizeof(void*)*(++(wd->num_values)));
   wd->values[wd->num_values-1] = val;
 }
 
