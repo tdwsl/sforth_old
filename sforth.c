@@ -608,10 +608,10 @@ void forth_printWord(Forth *fth, ForthWord *wd) {
 }
 
 void forth_runWord(Forth *fth, ForthWord *wd) {
-  int pc = fth->pc;
+  int pc = 0;
 
-  int *i_stack = fth->i_stack;
-  int i_sp = fth->i_sp;
+  int i_stack[FORTH_COMPILE_STACK_SIZE*2];
+  int i_sp = 0;
 
   intmax_t v1, v2;
   intmax_t i;
@@ -830,11 +830,8 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       forth_push(fth, forth_pop(fth)+sizeof(void*));
       break;
     case FORTH_PARSENAME:
-      fth->mode = FORTHMODE_PARSENAME;
-      fth->pc = pc;
-      fth->i_sp = i_sp;
-      fth->wd = wd;
-      return;
+      fth->name = fth->names[fth->name_i++];
+      break;
     case FORTH_CREATE:
       forth_create(fth, fth->name, fth->here);
       free(fth->name);
@@ -951,17 +948,19 @@ void forth_compileToken(Forth *fth, char *s) {
 
   case FORTHMODE_PARSENAME:
     forth_capitalize(s);
-    if(forth_validIdentifier(s)) {
-      fth->name = malloc(strlen(s)+1);
-      strcpy(fth->name, s);
-      fth->pc++;
+    fth->names[fth->name_i] = (char*)malloc(strlen(s)+1);
+    strcpy(fth->names[fth->name_i], s);
+    fth->name_i++;
+
+    if(fth->name_i >= fth->num_names) {
+      fth->mode = FORTHMODE_NORMAL;
+      fth->name_i = 0;
+      if((d = forth_wordIndex(fth, "0")) != 0) {
+        forth_runWord(fth, &fth->words[d]);
+        forth_forgetWord(fth, "0");
+      }
+      free(fth->names);
     }
-    else {
-      printf(FORTH_IDENTIFIER_ERR, s);
-      fth->pc += 3;
-    }
-    fth->mode = FORTHMODE_NORMAL;
-    forth_runWord(fth, fth->wd);
     return;
 
   case FORTHMODE_WORDNAME:
@@ -1134,15 +1133,18 @@ void forth_compileToken(Forth *fth, char *s) {
       fth->mode = FORTHMODE_INCLUDE;
 
     else if((d = forth_wordIndex(fth, s)) != -1) {
-      if(fth->mode == FORTHMODE_WORD) {
-        ForthWord *wd = &fth->words[d];
-        for(int pc = 0; pc < wd->size; forth_nextInstruction(wd, &pc))
-          if(wd->program[pc] == FORTH_PARSENAME) {
+      ForthWord *wd = &fth->words[d];
+      fth->num_names = 0;
+      for(int pc = 0; pc < wd->size; forth_nextInstruction(wd, &pc))
+        if(wd->program[pc] == FORTH_PARSENAME) {
+          if(fth->mode == FORTHMODE_WORD) {
             printf(FORTH_PARSENAME_ERR, wd->name);
             fth->mode = FORTHMODE_WORDERR;
             return;
           }
-      }
+          else
+            fth->num_names++;
+        }
 
       if(d < fth->fence) {
         for(int i = 0; i < fth->words[d].size; i++)
@@ -1151,6 +1153,13 @@ void forth_compileToken(Forth *fth, char *s) {
       else {
         forth_addInstruction(fth, FORTH_CALL);
         forth_addValue(fth, (void*)(intmax_t)d);
+      }
+
+      if(fth->num_names) {
+        fth->names = (char**)malloc(sizeof(char*)*(fth->num_names));
+        fth->name_i = 0;
+        fth->mode = FORTHMODE_PARSENAME;
+        return;
       }
     }
     else
@@ -1161,8 +1170,6 @@ void forth_compileToken(Forth *fth, char *s) {
   if(forth_done(fth)) {
     int d = forth_wordIndex(fth, "0");
     if(d != -1) {
-      fth->pc = 0;
-      fth->i_sp = 0;
       forth_runWord(fth, &fth->words[d]);
       if(fth->mode == FORTHMODE_NORMAL)
         forth_forgetWord(fth, "0");
