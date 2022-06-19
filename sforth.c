@@ -54,6 +54,8 @@ enum {
   FORTH_EQUAL,
   FORTH_SETMEM,
   FORTH_GETMEM,
+  FORTH_CSETMEM,
+  FORTH_CGETMEM,
   FORTH_DO,
   FORTH_HERE,
   FORTH_ALLOT,
@@ -314,6 +316,10 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_SETMEM);
   forth_addWord(fth, "@");
   forth_addInstruction(fth, FORTH_GETMEM);
+  forth_addWord(fth, "C!");
+  forth_addInstruction(fth, FORTH_CSETMEM);
+  forth_addWord(fth, "C@");
+  forth_addInstruction(fth, FORTH_CGETMEM);
   forth_addWord(fth, "KEY");
   forth_addInstruction(fth, FORTH_KEY);
   forth_addWord(fth, "EMIT");
@@ -531,6 +537,8 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_DROP: printf("drop"); break;
   case FORTH_GETMEM: printf("@"); break;
   case FORTH_SETMEM: printf("!"); break;
+  case FORTH_CGETMEM: printf("C@"); break;
+  case FORTH_CSETMEM: printf("C!"); break;
   case FORTH_PRINT: printf("."); break;
   case FORTH_DO: printf("do"); break;
   case FORTH_HERE: printf("here"); break;
@@ -673,10 +681,23 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
     case FORTH_SETMEM:
       v2 = forth_pop(fth);
       v1 = forth_pop(fth);
-      memcpy((void**)v2, (void*)&v1, sizeof(void*));
+      memcpy((void**)v2, (void**)&v1, sizeof(void*));
       break;
     case FORTH_GETMEM:
-      forth_push(fth, *(intmax_t*)forth_pop(fth));
+      v1 = forth_pop(fth);
+      memcpy((void**)&v2, (void**)v1, sizeof(void*));
+      forth_push(fth, v2);
+      break;
+    case FORTH_CSETMEM:
+      v2 = forth_pop(fth);
+      v1 = forth_pop(fth);
+      memcpy((char*)v2, (char*)&v1, 1);
+      break;
+    case FORTH_CGETMEM:
+      v1 = forth_pop(fth);
+      memcpy((char*)&v2, (char*)v1, 1);
+      v2 &= 0xff;
+      forth_push(fth, v2);
       break;
     case FORTH_DUP:
       v1 = forth_pop(fth);
