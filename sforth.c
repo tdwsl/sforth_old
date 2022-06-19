@@ -12,6 +12,7 @@
 #define FORTH_THEN_ERR "expect 'IF' before 'THEN' !\n"
 #define FORTH_DO_ERR "expect 'LOOP' after 'DO' !\n"
 #define FORTH_I_ERR "expect 'DO' before 'I' !\n"
+#define FORTH_J_ERR "expect 'DO'..'DO' before 'J' !\n"
 #define FORTH_LOOP_ERR "expect 'DO' before 'LOOP' !\n"
 #define FORTH_PLUSLOOP_ERR "expect 'DO' before '+LOOP' !\n"
 #define FORTH_BEGIN_ERR "expect 'UNTIL' after 'BEGIN' !\n"
@@ -66,6 +67,7 @@ enum {
   FORTH_BYE,
   FORTH_SEE,
   FORTH_I,
+  FORTH_J,
   FORTH_AND,
   FORTH_OR,
   FORTH_XOR,
@@ -545,6 +547,7 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_ALLOT: printf("allot"); break;
   case FORTH_BYE: printf("bye"); break;
   case FORTH_I: printf("i"); break;
+  case FORTH_J: printf("j"); break;
   case FORTH_AND: printf("and"); break;
   case FORTH_OR: printf("or"); break;
   case FORTH_XOR: printf("xor"); break;
@@ -838,6 +841,9 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
     case FORTH_I:
       forth_push(fth, i_stack[i_sp-1]);
       break;
+    case FORTH_J:
+      forth_push(fth, i_stack[i_sp-3]);
+      break;
     case FORTH_HERE:
       forth_push(fth, (intmax_t)fth->here);
       break;
@@ -1096,6 +1102,12 @@ void forth_compileToken(Forth *fth, char *s) {
         printf(FORTH_I_ERR);
       else
         forth_addInstruction(fth, FORTH_I);
+    }
+    else if(strcmp(s, "J") == 0) {
+      if(fth->do_sp < 2)
+        printf(FORTH_J_ERR);
+      else
+        forth_addInstruction(fth, FORTH_J);
     }
     else if(strcmp(s, "LOOP") == 0) {
       if(!fth->do_sp)
