@@ -27,6 +27,21 @@
 #define FORTH_RESERVED_ERR "cannot redefine '%s' !\n"
 #define FORTH_PARSENAME_ERR "cannot call '%s' from within a word !\n"
 
+#ifdef __has_include
+#if __has_include(<termios.h>)
+#define SFORTH_USE_TERMIOS
+#elif __has_include(<conio.h>)
+#define SFORTH_USE_CONIO
+#endif
+#endif
+
+#ifdef SFORTH_USE_TERMIOS
+#include <termios.h>
+#include <unistd.h>
+#elif defined(SFORTH_USE_CONIO)
+#include <conio.h>
+#endif
+
 /* bytecode instructions */
 enum {
   FORTH_PUSH,
@@ -214,9 +229,27 @@ void forth_copyWord(Forth *fth, ForthWord *wd) {
 }
 
 char forth_defaultKey() {
+#ifdef SFORTH_USE_TERMIOS
+  char c = 0;
+  struct termios oterm, term;
+  tcgetattr(0, &oterm);
+  memcpy(&term, &oterm, sizeof(struct termios));
+  term.c_lflag &= ~ICANON;
+  term.c_lflag &= ~ECHO;
+  term.c_cc[VMIN] = 1;
+  term.c_cc[VTIME] = 0;
+  tcsetattr(0, TCSANOW, &term);
+  read(0, &c, 1);
+  tcsetattr(0, TCSADRAIN, &oterm);
+  return c;
+#elif defined(SFORTH_USE_CONIO)
+  char c = getch();
+  return c;
+#else
   char c = fgetc(stdin);
   while(fgetc(stdin) != '\n');
   return c;
+#endif
 }
 
 void forth_defaultEmit(char c) {
