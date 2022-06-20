@@ -203,8 +203,10 @@ void forth_freeWord(ForthWord *wd) {
     }
     forth_nextInstruction(wd, &pc);
   }
-  free(wd->values);
-  free(wd->program);
+  if(wd->values)
+    free(wd->values);
+  if(wd->program)
+    free(wd->program);
   free(wd->name);
 }
 
@@ -994,7 +996,7 @@ int forth_done(Forth *fth) {
 
   if(fth->words) {
     ForthWord *wd = &fth->words[fth->num_words-1];
-    if(strcmp(wd->name, "0") == 0)
+    if(strcmp(wd->name, "0") == 0 && wd->size > 0)
       if(wd->program[0] == FORTH_TO && wd->size < 3)
         return 0;
   }
