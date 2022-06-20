@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define FORTH_STACK_SIZE 512
+#define FORTH_STACK_SIZE 1024
 #define FORTH_COMPILE_STACK_SIZE 256
 #define FORTH_MEMORY_SIZE 480*1024
 
