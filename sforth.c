@@ -80,6 +80,7 @@ enum {
   FORTH_KEY,
   FORTH_2DUP,
   FORTH_2OVER,
+  FORTH_2SWAP,
   FORTH_GREATEREQ,
   FORTH_LESSEQ,
   FORTH_DIVMOD,
@@ -266,6 +267,8 @@ Forth *forth_newForth() {
   forth_addInstruction(fth, FORTH_2DUP);
   forth_addWord(fth, "2OVER");
   forth_addInstruction(fth, FORTH_2OVER);
+  forth_addWord(fth, "2SWAP");
+  forth_addInstruction(fth, FORTH_2SWAP);
   forth_addWord(fth, "OVER");
   forth_addInstruction(fth, FORTH_OVER);
   forth_addWord(fth, "SWAP");
@@ -560,6 +563,7 @@ void forth_printInstruction(Forth *fth, ForthWord *wd, int pc) {
   case FORTH_KEY: printf("key"); break;
   case FORTH_2DUP: printf("2dup"); break;
   case FORTH_2OVER: printf("2over"); break;
+  case FORTH_2SWAP: printf("2swap"); break;
   case FORTH_DIVMOD: printf("/mod"); break;
   case FORTH_GREATEREQ: printf(">="); break;
   case FORTH_LESSEQ: printf("<="); break;
@@ -725,6 +729,16 @@ void forth_runWord(Forth *fth, ForthWord *wd) {
       else {
         forth_push(fth, 0);
         forth_push(fth, 0);
+      }
+      break;
+    case FORTH_2SWAP:
+      if(forth_has(fth, 4)) {
+        v1 = (intmax_t)fth->stack[fth->sp-4];
+        v2 = (intmax_t)fth->stack[fth->sp-3];
+        fth->stack[fth->sp-4] = fth->stack[fth->sp-2];
+        fth->stack[fth->sp-3] = fth->stack[fth->sp-1];
+        fth->stack[fth->sp-2] = (void*)v1;
+        fth->stack[fth->sp-1] = (void*)v2;
       }
       break;
     case FORTH_DEPTH:
