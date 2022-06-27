@@ -1,7 +1,7 @@
 sforth - a forth interpreter - tdwsl 2022
 
 **NOTE** I probably won't be working on this much anymore - check out the
-rewrite at tdwsl/sforth2
+rewrite at tdwsl/sforth
 
 sforth is a Forth interpreter that can be embedded within a C program using
 a simple API. It should work on most architectures. Some words may be
